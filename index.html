@@ -10,6 +10,33 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#EADFC6" />
     <title>Ticketer</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("vite-ui-theme") || "system";
+          var c = localStorage.getItem("vite-ui-theme-contrast") || "standard";
+          var m =
+            t === "system"
+              ? matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light"
+              : t;
+          document.documentElement.className = c === "standard" ? m : m + "-" + c + "-contrast";
+        } catch (e) {}
+      })();
+      (function () {
+        try {
+          /* ...your existing theme class code... */
+          var css = localStorage.getItem("vite-ui-palette-css");
+          if (css) {
+            var s = document.createElement("style");
+            s.id = "dynamic-palette"; // same id, so sync.ts reuses this element
+            s.textContent = css;
+            document.head.appendChild(s);
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

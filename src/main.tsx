@@ -1,6 +1,8 @@
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 import Home from "@/Home";
+import "@/css/index.css";
 
 const router = createBrowserRouter([
   {
@@ -9,4 +11,8 @@ const router = createBrowserRouter([
   },
 ]);
 
-createRoot(document.getElementById("root")!).render(<RouterProvider router={router} />);
+createRoot(document.getElementById("root")!).render(
+  <ThemeProvider>
+    <RouterProvider router={router} />
+  </ThemeProvider>,
+);
