@@ -1,13 +1,20 @@
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { ThemeProvider } from "@/providers/ThemeProvider";
-import Home from "@/Home";
+import Home from "@/routes/Home";
+import AppLayout from "@/routes/Layout";
 import "@/css/index.css";
+import "@/lib/palette/sync";
 
 const router = createBrowserRouter([
   {
-    path: "/",
-    element: <Home />,
+    element: <AppLayout />,
+    children: [
+      {
+        path: "/",
+        element: <Home />,
+      },
+    ],
   },
 ]);
 
