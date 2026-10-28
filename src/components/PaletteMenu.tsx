@@ -3,13 +3,14 @@ import { ImagePlus, Palette, RotateCcw } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { ColorPicker } from "@/components/ui/ColorPicker";
 import { buttonVariants } from "@/components/ui/Button/variant";
 import { seedsFromImage } from "@/lib/palette/generate";
 import { hexColor, paletteVariants, variantLabels } from "@/lib/palette/schema";
 import { cn } from "@/lib/utils";
 import { usePaletteStore } from "@/stores/paletteStore";
 
-const DEFAULT_SEED = "#266489"; // primary of the static light.css
+const DEFAULT_SEED = "#266489";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -95,7 +96,7 @@ export function PaletteMenu() {
           "data-popup-open:bg-secondary data-popup-open:text-on-secondary",
         )}
       >
-        <Palette /> Palette
+        <Palette /> <span className="max-md:sr-only">Palette</span>
       </Popover.Trigger>
 
       <Popover.Portal>
@@ -117,22 +118,16 @@ export function PaletteMenu() {
 
             <Field label="Seed color">
               <div className="flex items-center gap-3">
-                {/* The native color input is invisible and fills the round swatch */}
-                <label
-                  className="relative size-10 shrink-0 cursor-pointer overflow-hidden rounded-full border border-outline-variant focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-secondary"
+                <ColorPicker
+                  label="Seed color"
+                  value={current}
+                  onChange={(hex) => {
+                    setDraft(null);
+                    setSeed(hex);
+                  }}
+                  className="size-10 shrink-0 cursor-pointer rounded-full border border-outline-variant outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-secondary"
                   style={{ background: current }}
-                >
-                  <input
-                    type="color"
-                    aria-label="Pick seed color"
-                    value={current}
-                    onChange={(e) => {
-                      setDraft(null);
-                      setSeed(e.target.value);
-                    }}
-                    className="absolute inset-0 size-full cursor-pointer opacity-0"
-                  />
-                </label>
+                />
                 <input
                   aria-label="Seed color hex"
                   aria-invalid={!hexValid}

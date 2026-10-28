@@ -1,30 +1,46 @@
-import { Fragment } from "react";
+import type { ComponentType } from "react";
 import { Logo } from "@/components/Logo";
-import { Divider } from "@/components/ui/Divider";
+import { StepFooter } from "@/components/ticket/StepFooter";
+import { DetailsStep } from "@/components/ticket/panels/DetailsStep";
+import { ExportStep } from "@/components/ticket/panels/ExportStep";
+import { StyleStep } from "@/components/ticket/panels/StyleStep";
+import { UploadStep } from "@/components/ticket/panels/UploadStep";
+import { STEPS, type StepId } from "@/components/ticket/steps";
+import { TabsPanel } from "@/components/ui/Tabs";
 
-const SECTIONS = 6;
-const ITEMS_PER_SECTION = 4;
+const PANELS: Record<StepId, ComponentType> = {
+  style: StyleStep,
+  upload: UploadStep,
+  details: DetailsStep,
+  export: ExportStep,
+};
 
-export default function Sidebar() {
+type SidebarProps = {
+  step: StepId;
+  onStepChange: (step: StepId) => void;
+};
+
+// Beside the preview on desktop, under it on a phone
+export default function Sidebar({ step, onStepChange }: SidebarProps) {
   return (
-    <aside className="flex w-64 shrink-0 flex-col">
-      <div className="flex h-16 shrink-0 items-center px-6">
+    <aside className="order-last flex h-[50dvh] shrink-0 flex-col lg:order-first lg:h-auto lg:w-96">
+      <div className="hidden h-16 shrink-0 items-center px-6 lg:flex">
         <Logo className="size-8" />
-        <span className="ml-3 text-xl text-on-surface font-black">Ticketer</span>
+        <span className="ml-3 text-xl font-black text-on-surface">Ticketer</span>
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto">
-        {Array.from({ length: SECTIONS }, (_, s) => (
-          <Fragment key={s}>
-            {s > 0 && <Divider inset="middle" className="my-2" />}
-            <div className="flex flex-col gap-2 p-3">
-              {Array.from({ length: ITEMS_PER_SECTION }, (_, i) => (
-                <div key={i} className="h-12 rounded-lg bg-current/10" />
-              ))}
-            </div>
-          </Fragment>
-        ))}
-      </nav>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {STEPS.map(({ value }) => {
+          const Panel = PANELS[value];
+          return (
+            <TabsPanel key={value} value={value} className="flex flex-col">
+              <Panel />
+            </TabsPanel>
+          );
+        })}
+      </div>
+
+      <StepFooter step={step} onStepChange={onStepChange} />
     </aside>
   );
 }
