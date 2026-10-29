@@ -1,6 +1,6 @@
 import qrcode from "qrcode-generator";
 
-import { rgb, rgba } from "../color";
+import { mutedInk, rgb, rgba } from "../color";
 import type { FieldKey } from "../fields";
 import { drawCover } from "../photo";
 import type { TicketState } from "./types";
@@ -274,7 +274,7 @@ export function ticketKit(S: TicketState, k: number, W: number, baseH: number, r
     A: rgb(st.acc),
     OA: rgb(st.onacc),
     I: rgb(st.ink),
-    M: rgba(st.ink, 0.74),
+    M: mutedInk(st),
   };
 }
 

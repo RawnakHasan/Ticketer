@@ -17,6 +17,7 @@ import { clamp } from "@/lib/ticket/math";
 import { PRESETS } from "@/lib/ticket/presets";
 import { cn } from "@/lib/utils";
 import { usePhotoStore } from "@/stores/photoStore";
+import { useStickerStore } from "@/stores/stickerStore";
 import { useTicketerStore } from "@/stores/ticketerStore";
 
 type Action = "save" | "share" | "copy" | "all";
@@ -39,7 +40,12 @@ export function ExportStep() {
       // Read at click time so the export always matches what is on screen
       const { settings: current } = useTicketerStore.getState();
       const photos = usePhotoStore.getState();
-      const poster = { main: photos.main, stub: photos.stub };
+      // No selected sticker here, so the dashed outline never reaches an export
+      const poster = {
+        main: photos.main,
+        stub: photos.stub,
+        stickers: useStickerStore.getState().items,
+      };
       const file =
         action === "all"
           ? await renderAllSizes(current, poster)

@@ -6,6 +6,7 @@ import { notifyPreviewDrawn, previewCanvases } from "@/lib/ticket/previewBus";
 import { drawPoster } from "@/lib/ticket/render/drawPoster";
 import { useFontsReady } from "@/hooks/useFontsReady";
 import { usePhotoStore } from "@/stores/photoStore";
+import { useStickerStore } from "@/stores/stickerStore";
 import { useTicketerStore } from "@/stores/ticketerStore";
 import { useViewStore } from "@/stores/viewStore";
 
@@ -16,6 +17,8 @@ export function useTicketCanvas(canvasRef: RefObject<HTMLCanvasElement | null>) 
   const settings = useTicketerStore((s) => s.settings);
   const main = usePhotoStore((s) => s.main);
   const stub = usePhotoStore((s) => s.stub);
+  const stickers = useStickerStore((s) => s.items);
+  const selectedSticker = useStickerStore((s) => s.selectedId);
   const side = useViewStore((s) => s.side);
   const stampScale = useViewStore((s) => s.stampScale);
   const fontsReady = useFontsReady();
@@ -23,8 +26,8 @@ export function useTicketCanvas(canvasRef: RefObject<HTMLCanvasElement | null>) 
 
   const { state, preset, tpl } = composeTicket(
     settings,
-    { main, stub },
-    { back: side === "back", stampScale },
+    { main, stub, stickers },
+    { back: side === "back", stampScale, selectedSticker },
   );
   // The moving backdrop is drawn on its own canvas behind this one, so the poster is drawn without it
   const animated = isAnimatedBackdrop(state.backdrop);

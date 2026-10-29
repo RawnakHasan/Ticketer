@@ -1,7 +1,8 @@
 import type { RGB, Stock } from "../color";
 import type { FieldKey } from "../fields";
-import type { BackdropId, LayoutId, TemplateId } from "../ids";
+import type { BackdropId, LayoutId, StockId, TemplateId } from "../ids";
 import type { MainShape, StubArea } from "../settings";
+import type { Sticker } from "../sticker";
 import type { Photo } from "../types";
 
 // What a template needs to draw one ticket. Built from the settings by buildTicketState.
@@ -33,7 +34,13 @@ export type TicketState = {
   tilt: number;
   shadow: number;
   backdrop: BackdropId;
-  inkOverride: RGB | null;
+  // Builds the colours for a paper stock with this ticket's accent and hand-picked colours.
+  // The variations layout uses it to show the same ticket on other paper.
+  mkStock: (id: StockId) => Stock;
+  // Drawn on top of the front of every ticket
+  stickers: readonly Sticker[];
+  // Gets a dashed outline in the preview. Always null for exports.
+  selectedSticker: string | null;
 };
 
 export type Rendered = { canvas: HTMLCanvasElement; warnings: string[] };

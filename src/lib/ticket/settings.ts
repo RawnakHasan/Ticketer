@@ -65,8 +65,13 @@ export const settingsSchema = z.object({
   // "<presetId>:<templateId>" entries the person picked by hand, so recompose leaves them alone
   keep: z.record(z.string(), z.boolean()).default(() => ({})),
   exportSide: z.enum(EXPORT_SIDE_IDS).default("front"),
+  // Colours picked by hand. null = worked out automatically from the photos and the paper.
   accent: rgbSchema.nullable().default(null),
   ink: rgbSchema.nullable().default(null),
+  paper: rgbSchema.nullable().default(null),
+  ink2: rgbSchema.nullable().default(null),
+  // Which roll of the colour dice the "photo" paper is on. 0 = the calm automatic one.
+  shuffle: z.number().int().min(0).default(0),
   stubArea: stubAreaSchema.default(() => ({ ...DEFAULT_STUB_AREA })),
   mainShape: mainShapeSchema.default(() => ({ ...DEFAULT_MAIN_SHAPE })),
   adjust: adjustSchema.default(() => ({ ...DEFAULT_ADJUST })),

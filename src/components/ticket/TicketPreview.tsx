@@ -8,16 +8,24 @@ import { clamp } from "@/lib/ticket/math";
 import type { Preset } from "@/lib/ticket/presets";
 import { layoutGroup } from "@/lib/ticket/render/layout";
 import { TEMPLATES } from "@/lib/ticket/render/templates";
+import { hitSticker } from "@/lib/ticket/sticker";
 import type { TicketState } from "@/lib/ticket/render/types";
 import { useTicketCanvas } from "@/hooks/useTicketCanvas";
 import { cn } from "@/lib/utils";
 import { usePhotoStore } from "@/stores/photoStore";
+import { useStickerStore } from "@/stores/stickerStore";
 import { useTicketerStore } from "@/stores/ticketerStore";
 import { useViewStore } from "@/stores/viewStore";
 
 // Where a pointer is on the ticket, as a fraction of its width and height.
 // Undoes the poster layout (padding, safe area, tilt) so the stamp lands under the finger.
-function pointOnTicket(event: PointerEvent<HTMLCanvasElement>, preset: Preset, state: TicketState) {
+// `limit` keeps the point inside the ticket. The stamp stays well inside it, stickers may reach the edge.
+function pointOnTicket(
+  event: PointerEvent<HTMLCanvasElement>,
+  preset: Preset,
+  state: TicketState,
+  limit: [number, number] = [0.08, 0.92],
+) {
   const canvas = event.currentTarget;
   const rect = canvas.getBoundingClientRect();
   const u = canvas.width / preset.w;
@@ -39,8 +47,11 @@ function pointOnTicket(event: PointerEvent<HTMLCanvasElement>, preset: Preset, s
   const [tw, th] = TEMPLATES[state.tpl].size;
 
   return {
-    x: clamp(x / k / tw + 0.5, 0.08, 0.92),
-    y: clamp(y / k / (th + state.dy) + 0.5, 0.08, 0.92),
+    x: clamp(x / k / tw + 0.5, limit[0], limit[1]),
+    y: clamp(y / k / (th + state.dy) + 0.5, limit[0], limit[1]),
+    // The ticket's size in design units, for hit testing
+    w: tw,
+    h: th + state.dy,
   };
 }
 
@@ -49,6 +60,8 @@ export function TicketPreview() {
   const backdropRef = useRef<HTMLCanvasElement>(null);
   const tiltRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  // The sticker being dragged, and how far the grab point is from its centre
+  const draggingSticker = useRef<{ id: string; dx: number; dy: number } | null>(null);
   const lastLayoutKey = useRef("");
 
   const { preset, tpl, state, warnings, animated } = useTicketCanvas(canvasRef);
@@ -56,6 +69,7 @@ export function TicketPreview() {
   const update = useTicketerStore((s) => s.update);
   const main = usePhotoStore((s) => s.main);
   const add = usePhotoStore((s) => s.add);
+  const stickers = useStickerStore((s) => s.items);
 
   const side = useViewStore((s) => s.side);
   const flip = useViewStore((s) => s.flip);
@@ -70,6 +84,8 @@ export function TicketPreview() {
   const hasSafeArea = showSafeArea && (top || bottom || sideSafe);
   const canDragStamp =
     dragStamp && settings.layout === "single" && side === "front" && Boolean(settings.show.stamp);
+  // Stickers can be dragged on the front of a single ticket, whether or not the stamp is
+  const canDragSticker = settings.layout === "single" && side === "front" && stickers.length > 0;
   const canTiltWithPhone =
     typeof window !== "undefined" &&
     "DeviceOrientationEvent" in window &&
@@ -137,7 +153,7 @@ export function TicketPreview() {
   }, [gyro]);
 
   function lean(event: PointerEvent<HTMLDivElement>) {
-    if (canDragStamp) return;
+    if (canDragStamp || draggingSticker.current) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const x = (event.clientX - rect.left) / rect.width - 0.5;
     const y = (event.clientY - rect.top) / rect.height - 0.5;
@@ -201,18 +217,63 @@ export function TicketPreview() {
                   ref={canvasRef}
                   role="img"
                   aria-label={`Live ticket poster preview, ${side}`}
-                  style={canDragStamp ? { cursor: "move", touchAction: "none" } : undefined}
+                  style={
+                    canDragStamp || canDragSticker
+                      ? { cursor: canDragStamp ? "move" : "default", touchAction: "none" }
+                      : undefined
+                  }
                   className="relative block h-auto max-h-[34dvh] w-auto max-w-full rounded-md lg:max-h-[calc(100dvh-14rem)]"
                   onPointerDown={(event) => {
+                    if (canDragSticker) {
+                      const at = pointOnTicket(event, preset, state, [-0.2, 1.2]);
+                      const hit = hitSticker(stickers, at.x, at.y, at.w, at.h);
+                      if (hit) {
+                        event.currentTarget.setPointerCapture(event.pointerId);
+                        draggingSticker.current = {
+                          id: hit.id,
+                          dx: hit.x - at.x,
+                          dy: hit.y - at.y,
+                        };
+                        // Grabbing one brings it to the front
+                        useStickerStore.getState().raise(hit.id);
+                        return;
+                      }
+                    }
                     if (!canDragStamp) return;
                     event.currentTarget.setPointerCapture(event.pointerId);
                     dragging.current = true;
                     update({ stampPos: pointOnTicket(event, preset, state) });
                   }}
                   onPointerMove={(event) => {
-                    if (dragging.current) update({ stampPos: pointOnTicket(event, preset, state) });
+                    const grab = draggingSticker.current;
+                    if (grab) {
+                      const at = pointOnTicket(event, preset, state, [-0.2, 1.2]);
+                      useStickerStore.getState().patch(grab.id, {
+                        x: clamp(at.x + grab.dx, 0, 1),
+                        y: clamp(at.y + grab.dy, 0, 1),
+                      });
+                      return;
+                    }
+                    if (dragging.current) {
+                      update({ stampPos: pointOnTicket(event, preset, state) });
+                      return;
+                    }
+                    if (canDragSticker) {
+                      // A grab cursor over a sticker, so it is clear it can be picked up
+                      const at = pointOnTicket(event, preset, state, [-0.2, 1.2]);
+                      const over = hitSticker(stickers, at.x, at.y, at.w, at.h);
+                      event.currentTarget.style.cursor = over
+                        ? "grab"
+                        : canDragStamp
+                          ? "move"
+                          : "default";
+                    }
                   }}
                   onPointerUp={() => {
+                    if (draggingSticker.current) {
+                      draggingSticker.current = null;
+                      return;
+                    }
                     if (!dragging.current) return;
                     dragging.current = false;
                     thump();

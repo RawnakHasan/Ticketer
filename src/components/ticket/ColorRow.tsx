@@ -14,6 +14,12 @@ type ColorRowProps = {
   onAuto: () => void;
   tile: { fill: RGB; text: RGB };
   contrast?: number;
+  // The ratio below which a hand-picked colour gets a warning. 4.5 is the usual bar for text.
+  minContrast?: number;
+  // What the contrast is measured against, shown in the badge's tooltip and in the warning
+  against?: string;
+  // What is hard to read when the contrast is low
+  lowMessage?: string;
 };
 
 const SWATCH_MOTION =
@@ -27,9 +33,12 @@ export function ColorRow({
   onAuto,
   tile,
   contrast,
+  minContrast = 4.5,
+  against = "the ticket colour",
+  lowMessage = "Text may be hard to read.",
 }: ColorRowProps) {
   const id = useId();
-  const low = manual && contrast !== undefined && contrast < 4.5;
+  const low = manual && contrast !== undefined && contrast < minContrast;
 
   return (
     // Rows sit in a segmented list: big outer corners, small ones where rows meet
@@ -77,7 +86,7 @@ export function ColorRow({
             </span>
             {contrast !== undefined && (
               <span
-                title="Contrast against the paper"
+                title={`Contrast against ${against}`}
                 className={cn(
                   "rounded-full px-2 py-0.5 text-[0.6875rem] leading-4 font-medium tabular-nums",
                   low
@@ -114,7 +123,7 @@ export function ColorRow({
           className="flex items-start gap-2 rounded-xl bg-error-container px-3 py-2 text-sm text-on-error-container"
         >
           <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-          Low contrast against this paper. Text may be hard to read.
+          Low contrast against {against}. {lowMessage}
         </p>
       )}
     </div>

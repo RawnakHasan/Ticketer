@@ -23,6 +23,8 @@ export const STOCK_IDS = [
   "navy",
   "sage",
   "rose",
+  // Paper colour taken from the photos (see palette.ts)
+  "photo",
 ] as const;
 export type StockId = (typeof STOCK_IDS)[number];
 

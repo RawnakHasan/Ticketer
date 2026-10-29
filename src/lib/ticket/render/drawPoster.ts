@@ -1,4 +1,4 @@
-import { makeStock, withInk } from "../color";
+import { drawStickers } from "../sticker";
 import type { Preset } from "../presets";
 import { backdropClock, drawAnimatedBackdrop, drawStaticBackdrop } from "./backdrop";
 import { renderBack } from "./back";
@@ -52,10 +52,12 @@ export function drawPoster(
       ...S,
       main: item.swap ? S.stub : S.main,
       stub: item.swap ? S.main : S.stub,
-      st: item.stock ? withInk(makeStock(item.stock, acc), S.inkOverride) : S.st,
+      st: item.stock ? S.mkStock(item.stock) : S.st,
     };
     const render = S.back ? renderBack : TEMPLATES[S.tpl].render;
     const { canvas: rendered, warnings: w } = render(ticket, k);
+    // Stickers go on the front only, over everything the template drew
+    if (!S.back) drawStickers(rendered, S.stickers, S.selectedSticker);
 
     c.save();
     if (!preset.bare) {

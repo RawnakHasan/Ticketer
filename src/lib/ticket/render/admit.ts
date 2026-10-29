@@ -1,4 +1,4 @@
-import { rgb, rgba } from "../color";
+import { mutedInk, rgb, rgba } from "../color";
 import { drawCover } from "../photo";
 import {
   barcode,
@@ -29,7 +29,7 @@ export function renderAdmit(S: TicketState, k: number): Rendered {
 
   const on = (key: string) => Boolean(show[key] && f[key as keyof typeof f]?.trim());
   const ink = rgb(st.ink);
-  const muted = rgba(st.ink, 0.74);
+  const muted = mutedInk(st);
   const accent = rgb(st.acc);
   const onAccent = rgb(st.onacc);
 

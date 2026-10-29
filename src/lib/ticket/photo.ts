@@ -1,5 +1,4 @@
 import { clamp } from "./math";
-import type { RGB } from "./color";
 import type { Photo } from "./types";
 
 const MAX_SIDE = 3000;
@@ -53,34 +52,6 @@ export async function loadPhoto(file: File): Promise<Photo> {
     y: 0,
     rot: 0,
   };
-}
-
-const accentCache = new WeakMap<ImageBitmap, RGB>();
-
-// The most saturated mid-tone pixel, used as the ticket's accent colour
-export function dominantColor(bmp: ImageBitmap): RGB {
-  const cached = accentCache.get(bmp);
-  if (cached) return cached;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = 16;
-  const g = canvas.getContext("2d", { willReadFrequently: true })!;
-  g.drawImage(bmp, 0, 0, 16, 16);
-  const d = g.getImageData(0, 0, 16, 16).data;
-
-  let best: RGB = [194, 68, 30];
-  let bestScore = -1;
-  for (let i = 0; i < d.length; i += 4) {
-    const max = Math.max(d[i], d[i + 1], d[i + 2]);
-    const score = (max - Math.min(d[i], d[i + 1], d[i + 2])) * (max > 60 && max < 235 ? 1 : 0.3);
-    if (score > bestScore) {
-      bestScore = score;
-      best = [d[i], d[i + 1], d[i + 2]];
-    }
-  }
-
-  accentCache.set(bmp, best);
-  return best;
 }
 
 // Centres the crop on the busiest part of the photo

@@ -1,10 +1,11 @@
-import { Shuffle } from "lucide-react";
+import { Shuffle, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button, ToggleButton } from "@/components/ui/Button";
 import { ColorRow } from "@/components/ticket/ColorRow";
 import { Section, SegmentedField, SliderField, SwitchField } from "@/components/ticket/controls";
+import { StickerSection } from "@/components/ticket/StickerSection";
 import { TemplateThumb } from "@/components/ticket/TemplateThumb";
-import { contrastRatio } from "@/lib/ticket/color";
+import { contrastRatio, mix } from "@/lib/ticket/color";
 import {
   BACKDROP_IDS,
   LAYOUT_IDS,
@@ -18,6 +19,7 @@ import { buildTicketState } from "@/lib/ticket/render/state";
 import { TEMPLATES, TEMPLATE_LIST } from "@/lib/ticket/render/templates";
 import { cn } from "@/lib/utils";
 import { usePhotoStore } from "@/stores/photoStore";
+import { useStickerStore } from "@/stores/stickerStore";
 import { useTicketerStore } from "@/stores/ticketerStore";
 import { useViewStore } from "@/stores/viewStore";
 
@@ -38,6 +40,7 @@ const STOCK_LABELS = {
   navy: "Navy",
   sage: "Sage",
   rose: "Rose",
+  photo: "From photo",
 } as const;
 
 // One tap sets paper, backdrop, grain and corners together
@@ -72,8 +75,16 @@ export function StyleStep() {
   const { stubArea, mainShape } = settings;
   const stubControls = TEMPLATES[settings.tpl].stubControls;
   // The colours the ticket is actually using, including the ones taken from the photo
-  const { st } = buildTicketState(settings, { main, stub });
+  const stickers = useStickerStore((s) => s.items);
+  const { st } = buildTicketState(settings, { main, stub, stickers });
   const textContrast = contrastRatio(st.ink, st.paper);
+  // With no second text colour the small print is the text colour, a little softer
+  const ink2 = st.ink2 ?? mix(st.paper, st.ink, 0.74);
+  const colourLocked =
+    settings.paper !== null ||
+    settings.ink !== null ||
+    settings.ink2 !== null ||
+    settings.accent !== null;
 
   return (
     <>
@@ -340,25 +351,78 @@ export function StyleStep() {
         )}
       </Section>
 
+      <StickerSection />
+
       <Section
         title="Colours"
-        hint="Automatic follows your photo and paper. Pick a colour to override it."
+        hint="Auto takes colours from your photos: the main photo for the ticket and accent, the stub photo for the second text colour. Pick a colour to lock it. Shuffle only changes the ones that are still on Auto."
+        action={
+          <div className="flex items-center gap-1">
+            <Button
+              variant="text"
+              size="xs"
+              // Shuffling needs the paper that follows the photos, so it switches to that
+              onClick={() => update({ shuffle: settings.shuffle + 1, stock: "photo" })}
+            >
+              <Shuffle aria-hidden="true" />
+              Shuffle
+            </Button>
+            <Button
+              variant="text"
+              size="xs"
+              disabled={!colourLocked && settings.shuffle === 0}
+              onClick={() =>
+                update({ paper: null, ink: null, ink2: null, accent: null, shuffle: 0 })
+              }
+            >
+              <Sparkles aria-hidden="true" />
+              All auto
+            </Button>
+          </div>
+        }
       >
         <div className="flex flex-col gap-0.5">
+          <ColorRow
+            label="Ticket colour"
+            value={st.paper}
+            manual={settings.paper !== null}
+            tile={{ fill: st.paper, text: st.ink }}
+            contrast={textContrast}
+            against="the text colour"
+            lowMessage="Text may be hard to read on this ticket colour."
+            onChange={(paper) => update({ paper })}
+            onAuto={() => update({ paper: null })}
+          />
           <ColorRow
             label="Text colour"
             value={st.ink}
             manual={settings.ink !== null}
             tile={{ fill: st.paper, text: st.ink }}
             contrast={textContrast}
+            against="the ticket colour"
             onChange={(ink) => update({ ink })}
             onAuto={() => update({ ink: null })}
+          />
+          <ColorRow
+            label="Second text colour"
+            value={ink2}
+            manual={settings.ink2 !== null}
+            tile={{ fill: st.paper, text: ink2 }}
+            contrast={contrastRatio(ink2, st.paper)}
+            against="the ticket colour"
+            lowMessage="Labels and small print may be hard to read."
+            onChange={(next) => update({ ink2: next })}
+            onAuto={() => update({ ink2: null })}
           />
           <ColorRow
             label="Accent"
             value={st.acc}
             manual={settings.accent !== null}
             tile={{ fill: st.acc, text: st.onacc }}
+            contrast={contrastRatio(st.onacc, st.acc)}
+            minContrast={3}
+            against="the text on it"
+            lowMessage="Labels on accent badges may be hard to read."
             onChange={(accent) => update({ accent })}
             onAuto={() => update({ accent: null })}
           />

@@ -8,6 +8,8 @@ export type Stock = {
   acc: RGB;
   alpha: number;
   ink: RGB;
+  // Second text colour for labels and small print. null = the text colour, a little softer.
+  ink2: RGB | null;
   onacc: RGB;
 };
 
@@ -42,20 +44,35 @@ export function contrastRatio(a: RGB, b: RGB) {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
-export function makeStock(id: StockId, acc: RGB): Stock {
-  const paper =
-    id === "tint" ? mix(acc, [255, 255, 255], 0.82) : (FIXED_PAPER[id] ?? FIXED_PAPER.light!);
+// Plain dark or light text for a paper colour
+export const autoInk = (paper: RGB): RGB =>
+  luminance(paper) > 0.4 ? [27, 26, 23] : [242, 237, 227];
+
+// `photo` carries the paper and text colours worked out from the photos, used by the "photo" stock
+export function makeStock(
+  id: StockId,
+  acc: RGB,
+  photo: { paper: RGB; ink: RGB } | null = null,
+): Stock {
+  const fromPhoto = id === "photo" && photo !== null;
+  const paper = fromPhoto
+    ? photo.paper
+    : id === "tint"
+      ? mix(acc, [255, 255, 255], 0.82)
+      : (FIXED_PAPER[id] ?? FIXED_PAPER.light!);
 
   return {
     paper,
     acc,
     alpha: id === "vellum" ? 0.86 : 1,
-    ink: luminance(paper) > 0.4 ? [27, 26, 23] : [242, 237, 227],
+    ink: fromPhoto ? photo.ink : autoInk(paper),
+    ink2: null,
     onacc: luminance(acc) > 0.18 ? [27, 26, 23] : [255, 255, 255],
   };
 }
 
-export const withInk = (stock: Stock, ink: RGB | null): Stock => (ink ? { ...stock, ink } : stock);
+// Small print and labels: the second text colour, or the text colour at reduced strength
+export const mutedInk = (stock: Stock) => (stock.ink2 ? rgb(stock.ink2) : rgba(stock.ink, 0.74));
 
 export function rgbToHex(color: RGB) {
   return `#${color.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
