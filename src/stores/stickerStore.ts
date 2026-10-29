@@ -1,13 +1,22 @@
 import { create } from "zustand";
 
 import type { Photo } from "@/lib/ticket/types";
-import { MAX_STICKERS, dropSprite, loadSticker, type Sticker } from "@/lib/ticket/sticker";
+import {
+  MAX_STICKERS,
+  dropSprite,
+  loadSticker,
+  type Sticker,
+  type StickerGuides,
+} from "@/lib/ticket/sticker";
 
 type StickerState = {
   // Bottom to top. Like photos, decoded stickers can't be saved, so they are gone on reload.
   items: Sticker[];
   selectedId: string | null;
+  // Snap lines shown while a sticker is being dragged
+  guides: StickerGuides | null;
   error: string;
+  setGuides: (guides: StickerGuides | null) => void;
   add: (file: File) => Promise<void>;
   patch: (id: string, patch: Partial<Omit<Sticker, "id" | "photo">>) => void;
   patchPhoto: (id: string, patch: Partial<Photo>) => void;
@@ -17,6 +26,8 @@ type StickerState = {
   duplicate: (id: string) => void;
   remove: (id: string) => void;
   dismissError: () => void;
+  // Puts back saved stickers, unless some were added in the meantime
+  restore: (items: Sticker[]) => void;
 };
 
 const mapOne = (items: Sticker[], id: string, change: (s: Sticker) => Sticker) =>
@@ -25,7 +36,13 @@ const mapOne = (items: Sticker[], id: string, change: (s: Sticker) => Sticker) =
 export const useStickerStore = create<StickerState>()((set, get) => ({
   items: [],
   selectedId: null,
+  guides: null,
   error: "",
+  setGuides: (guides) =>
+    set((s) =>
+      // Only a change is worth a redraw
+      s.guides?.x === guides?.x && s.guides?.y === guides?.y ? s : { guides },
+    ),
   add: async (file) => {
     if (get().items.length >= MAX_STICKERS) {
       set({ error: `A ticket holds up to ${MAX_STICKERS} stickers.` });
@@ -71,4 +88,5 @@ export const useStickerStore = create<StickerState>()((set, get) => ({
     }));
   },
   dismissError: () => set({ error: "" }),
+  restore: (items) => set((s) => (s.items.length ? s : { items })),
 }));

@@ -1,6 +1,8 @@
 // A photo the user added. The bitmap is decoded once; position and zoom are edited in place.
 export type Photo = {
   id: string;
+  // The image file as added (a HEIC photo is kept as the JPEG it was turned into), so it can be saved
+  src: Blob;
   bmp: ImageBitmap;
   // Size of the bitmap (capped at 3000px on the long side)
   w: number;

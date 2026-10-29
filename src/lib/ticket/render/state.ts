@@ -3,7 +3,7 @@ import type { FieldKey } from "../fields";
 import type { StockId, TemplateId } from "../ids";
 import { buildPalette, ensureContrast, type PhotoPalette } from "../palette";
 import type { Settings } from "../settings";
-import type { Sticker } from "../sticker";
+import type { Sticker, StickerGuides } from "../sticker";
 import type { Photo } from "../types";
 import { mainFrame } from "./frame";
 import { TEMPLATES } from "./templates";
@@ -20,6 +20,7 @@ export type ViewOptions = {
   stampScale?: number;
   // Sticker to outline in the preview
   selectedSticker?: string | null;
+  stickerGuides?: StickerGuides | null;
 };
 
 const FX: Record<Settings["adjust"]["fx"], string> = {
@@ -101,5 +102,6 @@ export function buildTicketState(
     mkStock,
     stickers: photos.stickers ?? [],
     selectedSticker: view.selectedSticker ?? null,
+    stickerGuides: view.stickerGuides ?? null,
   };
 }

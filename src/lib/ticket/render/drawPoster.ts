@@ -57,7 +57,7 @@ export function drawPoster(
     const render = S.back ? renderBack : TEMPLATES[S.tpl].render;
     const { canvas: rendered, warnings: w } = render(ticket, k);
     // Stickers go on the front only, over everything the template drew
-    if (!S.back) drawStickers(rendered, S.stickers, S.selectedSticker);
+    if (!S.back) drawStickers(rendered, S.stickers, S.selectedSticker, S.stickerGuides);
 
     c.save();
     if (!preset.bare) {

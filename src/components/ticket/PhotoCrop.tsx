@@ -1,4 +1,10 @@
-import { useEffect, useRef, type KeyboardEvent, type PointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 
 import { clamp } from "@/lib/ticket/math";
 import { drawCover, panRange } from "@/lib/ticket/photo";
@@ -14,6 +20,10 @@ type PhotoCropProps = {
 };
 
 // A canvas showing exactly what the ticket will show. Drag to pan, arrow keys to nudge, + and - to zoom.
+//
+// The canvas captures touch (touch-none) so dragging pans the photo instead of scrolling. To keep the
+// panel scrollable on a phone, it is capped in height and sits inside a margin: a finger that starts in
+// the margin, or on the controls around it, still scrolls.
 export function PhotoCrop({ photo, ratio, filter, label, onChange }: PhotoCropProps) {
   const ref = useRef<HTMLCanvasElement>(null);
   const drag = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
@@ -55,23 +65,30 @@ export function PhotoCrop({ photo, ratio, filter, label, onChange }: PhotoCropPr
     }
   }
 
+  const endDrag = () => {
+    drag.current = null;
+  };
+
   return (
-    <canvas
-      ref={ref}
-      tabIndex={0}
-      role="application"
-      aria-label={`${label} crop. Drag or use arrow keys to move, plus and minus to zoom.`}
-      style={{ aspectRatio: ratio }}
-      className="w-full cursor-grab touch-none rounded-xl bg-surface-container-highest outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-secondary active:cursor-grabbing"
-      onKeyDown={handleKeyDown}
-      onPointerDown={(event) => {
-        event.currentTarget.setPointerCapture(event.pointerId);
-        drag.current = { px: event.clientX, py: event.clientY, x: photo.x, y: photo.y };
-      }}
-      onPointerMove={handleMove}
-      onPointerUp={() => {
-        drag.current = null;
-      }}
-    />
+    // The side margin on small screens is the part of the row that still scrolls the panel
+    <div className="px-6 lg:px-0">
+      <canvas
+        ref={ref}
+        tabIndex={0}
+        role="application"
+        aria-label={`${label} crop. Drag or use arrow keys to move, plus and minus to zoom.`}
+        style={{ aspectRatio: ratio, "--r": ratio } as CSSProperties}
+        // Width is the smaller of the row and (max height x ratio), so the shape is kept
+        className="mx-auto block w-[min(100%,calc(var(--crop-h)*var(--r)))] [--crop-h:30dvh] lg:[--crop-h:60dvh] cursor-grab touch-none rounded-xl bg-surface-container-highest outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-secondary active:cursor-grabbing"
+        onKeyDown={handleKeyDown}
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          drag.current = { px: event.clientX, py: event.clientY, x: photo.x, y: photo.y };
+        }}
+        onPointerMove={handleMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      />
+    </div>
   );
 }

@@ -19,6 +19,7 @@ export function useTicketCanvas(canvasRef: RefObject<HTMLCanvasElement | null>) 
   const stub = usePhotoStore((s) => s.stub);
   const stickers = useStickerStore((s) => s.items);
   const selectedSticker = useStickerStore((s) => s.selectedId);
+  const stickerGuides = useStickerStore((s) => s.guides);
   const side = useViewStore((s) => s.side);
   const stampScale = useViewStore((s) => s.stampScale);
   const fontsReady = useFontsReady();
@@ -27,7 +28,7 @@ export function useTicketCanvas(canvasRef: RefObject<HTMLCanvasElement | null>) 
   const { state, preset, tpl } = composeTicket(
     settings,
     { main, stub, stickers },
-    { back: side === "back", stampScale, selectedSticker },
+    { back: side === "back", stampScale, selectedSticker, stickerGuides },
   );
   // The moving backdrop is drawn on its own canvas behind this one, so the poster is drawn without it
   const animated = isAnimatedBackdrop(state.backdrop);

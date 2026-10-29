@@ -2,7 +2,7 @@ import type { RGB, Stock } from "../color";
 import type { FieldKey } from "../fields";
 import type { BackdropId, LayoutId, StockId, TemplateId } from "../ids";
 import type { MainShape, StubArea } from "../settings";
-import type { Sticker } from "../sticker";
+import type { Sticker, StickerGuides } from "../sticker";
 import type { Photo } from "../types";
 
 // What a template needs to draw one ticket. Built from the settings by buildTicketState.
@@ -41,6 +41,8 @@ export type TicketState = {
   stickers: readonly Sticker[];
   // Gets a dashed outline in the preview. Always null for exports.
   selectedSticker: string | null;
+  // Centre lines a sticker is snapped to while it is dragged. Preview only.
+  stickerGuides: StickerGuides | null;
 };
 
 export type Rendered = { canvas: HTMLCanvasElement; warnings: string[] };

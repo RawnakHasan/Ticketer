@@ -20,6 +20,8 @@ type ColorRowProps = {
   against?: string;
   // What is hard to read when the contrast is low
   lowMessage?: string;
+  // Ready-made colours (from the photos) that lock this row when tapped
+  chips?: RGB[];
 };
 
 const SWATCH_MOTION =
@@ -36,6 +38,7 @@ export function ColorRow({
   minContrast = 4.5,
   against = "the ticket colour",
   lowMessage = "Text may be hard to read.",
+  chips = [],
 }: ColorRowProps) {
   const id = useId();
   const low = manual && contrast !== undefined && contrast < minContrast;
@@ -116,6 +119,38 @@ export function ColorRow({
           Auto
         </ToggleButton>
       </div>
+
+      {chips.length > 0 && (
+        <div
+          role="group"
+          aria-label={`${label}: colours from your photos`}
+          className="flex items-center gap-2"
+        >
+          <span className="text-xs text-on-surface-variant">From your photos</span>
+          <div className="flex flex-wrap gap-1.5">
+            {chips.map((chip) => {
+              const hex = rgbToHex(chip);
+              const picked = hex === rgbToHex(value);
+              return (
+                <button
+                  key={hex}
+                  type="button"
+                  aria-label={`Use ${hex.toUpperCase()}`}
+                  aria-pressed={picked}
+                  title={hex.toUpperCase()}
+                  onClick={() => onChange(chip)}
+                  style={{ backgroundColor: rgb(chip) }}
+                  className={cn(
+                    "size-6 rounded-full ring-1 ring-inset ring-on-surface/20 outline-none transition-transform hover:scale-110 active:scale-95",
+                    "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-secondary",
+                    picked && "ring-2 ring-primary ring-offset-2 ring-offset-surface-container-low",
+                  )}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {low && (
         <p

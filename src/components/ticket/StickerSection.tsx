@@ -1,4 +1,4 @@
-import { Copy, ImagePlus, Trash2 } from "lucide-react";
+import { Copy, FlipHorizontal2, ImagePlus, Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { MaterialShape } from "@/components/MaterialShape";
@@ -50,7 +50,7 @@ export function StickerSection() {
   return (
     <Section
       title="Stickers"
-      hint="Add a transparent PNG, or any photo to crop into a shape. Drag a sticker on the ticket to place it."
+      hint="Add a transparent PNG, or any photo to crop into a shape. Drag a sticker on the ticket to place it. Drag a corner to resize it and the pink knob to turn it, or pinch with two fingers."
     >
       {error && (
         <div
@@ -213,6 +213,15 @@ export function StickerSection() {
             <Button
               variant="tonal"
               size="xs"
+              aria-pressed={selected.flip}
+              onClick={() => patch(selected.id, { flip: !selected.flip })}
+            >
+              <FlipHorizontal2 aria-hidden="true" />
+              Flip
+            </Button>
+            <Button
+              variant="tonal"
+              size="xs"
               disabled={full}
               onClick={() => duplicate(selected.id)}
             >
@@ -230,7 +239,7 @@ export function StickerSection() {
       {items.length > 0 && (
         <p className="text-sm text-on-surface-variant">
           {layout === "single"
-            ? "Stickers show on the front. Photos and stickers are not saved when you reload."
+            ? "Stickers show on the front."
             : "Dragging works with the One ticket layout, front side. Stickers show on every ticket in the group."}
         </p>
       )}

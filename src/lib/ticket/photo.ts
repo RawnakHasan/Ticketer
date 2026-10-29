@@ -41,6 +41,7 @@ export async function loadPhoto(file: File): Promise<Photo> {
 
   return {
     id: crypto.randomUUID(),
+    src: blob,
     bmp,
     w: bmp.width,
     h: bmp.height,

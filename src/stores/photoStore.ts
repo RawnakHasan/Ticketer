@@ -14,6 +14,8 @@ type PhotoState = {
   swap: () => void;
   copyMainToStub: () => void;
   dismissError: () => void;
+  // Puts back saved photos, without replacing ones added in the meantime
+  restore: (main: Photo | null, stub: Photo | null) => void;
 };
 
 const only = (slot: PhotoSlot, photo: Photo | null): Partial<PhotoState> =>
@@ -45,4 +47,5 @@ export const usePhotoStore = create<PhotoState>()((set, get) => ({
     if (main) set({ stub: { ...main, id: crypto.randomUUID(), x: 0, y: 0, z: 1.6 } });
   },
   dismissError: () => set({ error: "" }),
+  restore: (main, stub) => set((s) => ({ main: s.main ?? main, stub: s.stub ?? stub })),
 }));

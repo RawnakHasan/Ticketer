@@ -6,6 +6,7 @@ import { Section, SegmentedField, SliderField, SwitchField } from "@/components/
 import { StickerSection } from "@/components/ticket/StickerSection";
 import { TemplateThumb } from "@/components/ticket/TemplateThumb";
 import { contrastRatio, mix } from "@/lib/ticket/color";
+import { photoChips } from "@/lib/ticket/palette";
 import {
   BACKDROP_IDS,
   LAYOUT_IDS,
@@ -392,6 +393,7 @@ export function StyleStep() {
             lowMessage="Text may be hard to read on this ticket colour."
             onChange={(paper) => update({ paper })}
             onAuto={() => update({ paper: null })}
+            chips={photoChips("paper", main, stub)}
           />
           <ColorRow
             label="Text colour"
@@ -402,6 +404,7 @@ export function StyleStep() {
             against="the ticket colour"
             onChange={(ink) => update({ ink })}
             onAuto={() => update({ ink: null })}
+            chips={photoChips("ink", main, stub)}
           />
           <ColorRow
             label="Second text colour"
@@ -413,6 +416,7 @@ export function StyleStep() {
             lowMessage="Labels and small print may be hard to read."
             onChange={(next) => update({ ink2: next })}
             onAuto={() => update({ ink2: null })}
+            chips={photoChips("ink2", main, stub)}
           />
           <ColorRow
             label="Accent"
@@ -425,6 +429,7 @@ export function StyleStep() {
             lowMessage="Labels on accent badges may be hard to read."
             onChange={(accent) => update({ accent })}
             onAuto={() => update({ accent: null })}
+            chips={photoChips("accent", main, stub)}
           />
         </div>
       </Section>

@@ -21,7 +21,12 @@ export type Sticker = {
   rot: number;
   // White die-cut edge, like a real sticker
   border: boolean;
+  // Mirrored left to right
+  flip: boolean;
 };
+
+// Which centre lines a moving sticker is snapped to, for the preview's guide lines
+export type StickerGuides = { x: boolean; y: boolean };
 
 export const MAX_STICKERS = 12;
 export const DEFAULT_PHOTO_SHAPE: MaterialShapeName = "cookie9";
@@ -58,6 +63,7 @@ export async function loadSticker(file: File, index: number): Promise<Sticker> {
     size: 0.3,
     rot: 0,
     border: true,
+    flip: false,
   };
 }
 
@@ -159,13 +165,36 @@ function drawnSize(s: Sticker, width: number): [number, number] {
   return [w * k, h * k];
 }
 
+// Size of the round handles, as a fraction of the ticket's width, and how far the rotate knob
+// sits above the sticker
+const HANDLE = 0.028;
+const KNOB_GAP = 0.07;
+
+// Where the corners and the rotate knob of a sticker are, in ticket units
+function handlePoints(s: Sticker, w: number, h: number) {
+  const [dw, dh] = drawnSize(s, w);
+  const a = (s.rot * Math.PI) / 180;
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  const at = (lx: number, ly: number) => ({
+    x: s.x * w + lx * cos - ly * sin,
+    y: s.y * h + lx * sin + ly * cos,
+  });
+  return {
+    corners: [at(-dw / 2, -dh / 2), at(dw / 2, -dh / 2), at(dw / 2, dh / 2), at(-dw / 2, dh / 2)],
+    knob: at(0, -dh / 2 - KNOB_GAP * w),
+  };
+}
+
 // Paints the stickers onto a finished ticket. "source-atop" only paints where the ticket already
-// is, so the tear notches and cut corners stay cut out. `selectedId` gets a dashed outline, for
-// the preview only. Exports never pass it.
+// is, so the tear notches and cut corners stay cut out. `selectedId` gets a dashed outline with
+// handles, and `guides` the centre lines it is snapped to. Both are for the preview only.
+// Exports never pass them.
 export function drawStickers(
   canvas: HTMLCanvasElement,
   stickers: readonly Sticker[],
   selectedId: string | null = null,
+  guides: StickerGuides | null = null,
 ) {
   if (!stickers.length) return;
 
@@ -180,6 +209,7 @@ export function drawStickers(
     c.save();
     c.translate(s.x * canvas.width, s.y * canvas.height);
     c.rotate((s.rot * Math.PI) / 180);
+    c.scale(s.flip ? -1 : 1, 1);
     c.shadowColor = "rgba(0,0,0,.32)";
     c.shadowBlur = longest * 0.045;
     c.shadowOffsetY = longest * 0.018;
@@ -188,10 +218,34 @@ export function drawStickers(
   }
 
   c.globalCompositeOperation = "source-over";
+  const unit = Math.max(2, canvas.width / 300);
+
+  if (guides && (guides.x || guides.y)) {
+    c.setLineDash([unit * 4, unit * 3]);
+    for (const [style, width] of [
+      ["#fff", unit * 2.4],
+      ["#ff2d95", unit * 1.2],
+    ] as const) {
+      c.strokeStyle = style;
+      c.lineWidth = width;
+      c.beginPath();
+      if (guides.x) {
+        c.moveTo(canvas.width / 2, 0);
+        c.lineTo(canvas.width / 2, canvas.height);
+      }
+      if (guides.y) {
+        c.moveTo(0, canvas.height / 2);
+        c.lineTo(canvas.width, canvas.height / 2);
+      }
+      c.stroke();
+    }
+    c.setLineDash([]);
+  }
+
   const selected = stickers.find((s) => s.id === selectedId);
   if (selected) {
     const [dw, dh] = drawnSize(selected, canvas.width);
-    const unit = Math.max(2, canvas.width / 300);
+    c.save();
     c.translate(selected.x * canvas.width, selected.y * canvas.height);
     c.rotate((selected.rot * Math.PI) / 180);
     c.setLineDash([unit * 5, unit * 4]);
@@ -204,8 +258,49 @@ export function drawStickers(
       c.lineWidth = width;
       c.strokeRect(-dw / 2, -dh / 2, dw, dh);
     }
+    c.restore();
+
+    // Round handles: the corners resize, the knob on its stalk rotates
+    const { corners, knob } = handlePoints(selected, canvas.width, canvas.height);
+    const r = canvas.width * HANDLE;
+    const top = corners[0];
+    const topRight = corners[1];
+    c.setLineDash([]);
+    c.strokeStyle = "#fff";
+    c.lineWidth = unit * 1.4;
+    c.beginPath();
+    c.moveTo((top.x + topRight.x) / 2, (top.y + topRight.y) / 2);
+    c.lineTo(knob.x, knob.y);
+    c.stroke();
+
+    for (const [i, point] of [...corners, knob].entries()) {
+      c.beginPath();
+      c.arc(point.x, point.y, r * (i === 4 ? 1.15 : 1), 0, Math.PI * 2);
+      c.fillStyle = i === 4 ? "#ff2d95" : "#fff";
+      c.fill();
+      c.lineWidth = unit * 1.2;
+      c.strokeStyle = "rgba(0,0,0,.6)";
+      c.stroke();
+    }
   }
   c.restore();
+}
+
+// Which handle of a sticker is under a point, if any. `slack` is extra reach in ticket units, so
+// a fingertip can still find a handle that is drawn small.
+export function hitHandle(
+  s: Sticker,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  slack = 0,
+): "resize" | "rotate" | null {
+  const { corners, knob } = handlePoints(s, w, h);
+  const reach = Math.max(w * HANDLE * 1.5, slack);
+  const near = (p: { x: number; y: number }) => Math.hypot(x * w - p.x, y * h - p.y) <= reach;
+  if (near(knob)) return "rotate";
+  return corners.some(near) ? "resize" : null;
 }
 
 // The topmost sticker under a point. Point and sizes are on the ticket, in the same units

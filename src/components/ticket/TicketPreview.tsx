@@ -1,3 +1,4 @@
+import { Redo2, Undo2 } from "lucide-react";
 import { useEffect, useRef, type PointerEvent } from "react";
 
 import { buttonVariants } from "@/components/ui/Button/variant";
@@ -8,14 +9,18 @@ import { clamp } from "@/lib/ticket/math";
 import type { Preset } from "@/lib/ticket/presets";
 import { layoutGroup } from "@/lib/ticket/render/layout";
 import { TEMPLATES } from "@/lib/ticket/render/templates";
-import { hitSticker } from "@/lib/ticket/sticker";
+import { hitHandle, hitSticker } from "@/lib/ticket/sticker";
 import type { TicketState } from "@/lib/ticket/render/types";
 import { useTicketCanvas } from "@/hooks/useTicketCanvas";
 import { cn } from "@/lib/utils";
+import { useHistoryStore } from "@/stores/historyStore";
 import { usePhotoStore } from "@/stores/photoStore";
 import { useStickerStore } from "@/stores/stickerStore";
 import { useTicketerStore } from "@/stores/ticketerStore";
 import { useViewStore } from "@/stores/viewStore";
+
+// Keeps an angle in -180 to 180 degrees
+const wrapDegrees = (degrees: number) => ((((degrees + 180) % 360) + 360) % 360) - 180;
 
 // Where a pointer is on the ticket, as a fraction of its width and height.
 // Undoes the poster layout (padding, safe area, tilt) so the stamp lands under the finger.
@@ -52,6 +57,8 @@ function pointOnTicket(
     // The ticket's size in design units, for hit testing
     w: tw,
     h: th + state.dy,
+    // How many of those units one CSS pixel on screen covers, to give fingertips some reach
+    unit: canvas.width / rect.width / k,
   };
 }
 
@@ -62,6 +69,22 @@ export function TicketPreview() {
   const dragging = useRef(false);
   // The sticker being dragged, and how far the grab point is from its centre
   const draggingSticker = useRef<{ id: string; dx: number; dy: number } | null>(null);
+  // A corner or the rotate knob being dragged: where the sticker started
+  const handleDrag = useRef<{
+    kind: "resize" | "rotate";
+    id: string;
+    size: number;
+    dist: number;
+  } | null>(null);
+  // Fingers on the ticket, for pinching a sticker bigger or smaller and turning it
+  const fingers = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{
+    id: string;
+    dist: number;
+    angle: number;
+    size: number;
+    rot: number;
+  } | null>(null);
   const lastLayoutKey = useRef("");
 
   const { preset, tpl, state, warnings, animated } = useTicketCanvas(canvasRef);
@@ -70,6 +93,7 @@ export function TicketPreview() {
   const main = usePhotoStore((s) => s.main);
   const add = usePhotoStore((s) => s.add);
   const stickers = useStickerStore((s) => s.items);
+  const selectedStickerId = useStickerStore((s) => s.selectedId);
 
   const side = useViewStore((s) => s.side);
   const flip = useViewStore((s) => s.flip);
@@ -78,6 +102,10 @@ export function TicketPreview() {
   const gyro = useViewStore((s) => s.gyro);
   const message = useViewStore((s) => s.message);
   const { toggleSide, endFlip, thump, reprint, setGyro, setMessage } = useViewStore.getState();
+
+  const canUndo = useHistoryStore((s) => s.past.length > 0);
+  const canRedo = useHistoryStore((s) => s.future.length > 0);
+  const { undo, redo } = useHistoryStore.getState();
 
   const showSafeArea = settings.safeOverlay;
   const [top, bottom, sideSafe] = preset.safe;
@@ -153,7 +181,7 @@ export function TicketPreview() {
   }, [gyro]);
 
   function lean(event: PointerEvent<HTMLDivElement>) {
-    if (canDragStamp || draggingSticker.current) return;
+    if (canDragStamp || draggingSticker.current || handleDrag.current || pinch.current) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const x = (event.clientX - rect.left) / rect.width - 0.5;
     const y = (event.clientY - rect.top) / rect.height - 0.5;
@@ -224,8 +252,41 @@ export function TicketPreview() {
                   }
                   className="relative block h-auto max-h-[34dvh] w-auto max-w-full rounded-md lg:max-h-[calc(100dvh-14rem)]"
                   onPointerDown={(event) => {
+                    fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+                    // A second finger on a selected sticker: pinch it
+                    const chosen = stickers.find((s) => s.id === selectedStickerId);
+                    if (canDragSticker && chosen && fingers.current.size === 2) {
+                      const [a, b] = [...fingers.current.values()];
+                      draggingSticker.current = null;
+                      handleDrag.current = null;
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      pinch.current = {
+                        id: chosen.id,
+                        dist: Math.hypot(b.x - a.x, b.y - a.y) || 1,
+                        angle: Math.atan2(b.y - a.y, b.x - a.x),
+                        size: chosen.size,
+                        rot: chosen.rot,
+                      };
+                      return;
+                    }
+
                     if (canDragSticker) {
                       const at = pointOnTicket(event, preset, state, [-0.2, 1.2]);
+                      // The selected sticker's handles come first, they sit on top of everything
+                      const grabbed = chosen
+                        ? hitHandle(chosen, at.x, at.y, at.w, at.h, 14 * at.unit)
+                        : null;
+                      if (chosen && grabbed) {
+                        event.currentTarget.setPointerCapture(event.pointerId);
+                        handleDrag.current = {
+                          kind: grabbed,
+                          id: chosen.id,
+                          size: chosen.size,
+                          dist: Math.hypot((at.x - chosen.x) * at.w, (at.y - chosen.y) * at.h) || 1,
+                        };
+                        return;
+                      }
                       const hit = hitSticker(stickers, at.x, at.y, at.w, at.h);
                       if (hit) {
                         event.currentTarget.setPointerCapture(event.pointerId);
@@ -245,13 +306,59 @@ export function TicketPreview() {
                     update({ stampPos: pointOnTicket(event, preset, state) });
                   }}
                   onPointerMove={(event) => {
+                    if (fingers.current.has(event.pointerId)) {
+                      fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+                    }
+
+                    const pinching = pinch.current;
+                    if (pinching && fingers.current.size >= 2) {
+                      const [a, b] = [...fingers.current.values()];
+                      const dist = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+                      const angle = Math.atan2(b.y - a.y, b.x - a.x);
+                      useStickerStore.getState().patch(pinching.id, {
+                        size: clamp((pinching.size * dist) / pinching.dist, 0.06, 0.9),
+                        rot: wrapDegrees(pinching.rot + ((angle - pinching.angle) * 180) / Math.PI),
+                      });
+                      return;
+                    }
+
+                    const handle = handleDrag.current;
+                    if (handle) {
+                      const at = pointOnTicket(event, preset, state, [-0.2, 1.2]);
+                      const sticker = stickers.find((s) => s.id === handle.id);
+                      if (!sticker) return;
+                      const dx = (at.x - sticker.x) * at.w;
+                      const dy = (at.y - sticker.y) * at.h;
+                      if (handle.kind === "resize") {
+                        useStickerStore.getState().patch(handle.id, {
+                          size: clamp((handle.size * Math.hypot(dx, dy)) / handle.dist, 0.06, 0.9),
+                        });
+                      } else {
+                        // The knob sits straight above the sticker, so "up" is zero degrees.
+                        // It clicks to every 15 degrees when it comes close.
+                        const raw = wrapDegrees((Math.atan2(dy, dx) * 180) / Math.PI + 90);
+                        const nearest = Math.round(raw / 15) * 15;
+                        useStickerStore.getState().patch(handle.id, {
+                          rot: Math.abs(raw - nearest) < 4 ? wrapDegrees(nearest) : Math.round(raw),
+                        });
+                      }
+                      return;
+                    }
+
                     const grab = draggingSticker.current;
                     if (grab) {
                       const at = pointOnTicket(event, preset, state, [-0.2, 1.2]);
-                      useStickerStore.getState().patch(grab.id, {
-                        x: clamp(at.x + grab.dx, 0, 1),
-                        y: clamp(at.y + grab.dy, 0, 1),
-                      });
+                      let x = clamp(at.x + grab.dx, 0, 1);
+                      let y = clamp(at.y + grab.dy, 0, 1);
+                      // Snaps to the middle of the ticket, with a guide line while it holds
+                      const near = 0.018;
+                      const snapX = Math.abs(x - 0.5) < near;
+                      const snapY = Math.abs(y - 0.5) < near;
+                      if (snapX) x = 0.5;
+                      if (snapY) y = 0.5;
+                      const store = useStickerStore.getState();
+                      store.setGuides(snapX || snapY ? { x: snapX, y: snapY } : null);
+                      store.patch(grab.id, { x, y });
                       return;
                     }
                     if (dragging.current) {
@@ -259,24 +366,52 @@ export function TicketPreview() {
                       return;
                     }
                     if (canDragSticker) {
-                      // A grab cursor over a sticker, so it is clear it can be picked up
+                      // A grab cursor over a sticker, a resize or turn cursor over its handles
                       const at = pointOnTicket(event, preset, state, [-0.2, 1.2]);
+                      const chosen = stickers.find((s) => s.id === selectedStickerId);
+                      const onHandle = chosen
+                        ? hitHandle(chosen, at.x, at.y, at.w, at.h, 14 * at.unit)
+                        : null;
                       const over = hitSticker(stickers, at.x, at.y, at.w, at.h);
-                      event.currentTarget.style.cursor = over
-                        ? "grab"
-                        : canDragStamp
-                          ? "move"
-                          : "default";
+                      event.currentTarget.style.cursor =
+                        onHandle === "rotate"
+                          ? "alias"
+                          : onHandle === "resize"
+                            ? "nwse-resize"
+                            : over
+                              ? "grab"
+                              : canDragStamp
+                                ? "move"
+                                : "default";
                     }
                   }}
-                  onPointerUp={() => {
+                  onPointerUp={(event) => {
+                    fingers.current.delete(event.pointerId);
+                    if (pinch.current) {
+                      // Lifting one finger ends the pinch. The other one does not start a drag.
+                      if (fingers.current.size < 2) pinch.current = null;
+                      return;
+                    }
+                    if (handleDrag.current) {
+                      handleDrag.current = null;
+                      return;
+                    }
                     if (draggingSticker.current) {
                       draggingSticker.current = null;
+                      useStickerStore.getState().setGuides(null);
                       return;
                     }
                     if (!dragging.current) return;
                     dragging.current = false;
                     thump();
+                  }}
+                  onPointerCancel={(event) => {
+                    fingers.current.delete(event.pointerId);
+                    pinch.current = null;
+                    handleDrag.current = null;
+                    draggingSticker.current = null;
+                    dragging.current = false;
+                    useStickerStore.getState().setGuides(null);
                   }}
                 />
                 {hasSafeArea ? (
@@ -321,6 +456,20 @@ export function TicketPreview() {
       </div>
 
       <div className="flex max-w-full flex-wrap items-center justify-center gap-2">
+        <Button variant="text" size="xs" disabled={!canUndo} onClick={undo} title="Undo (Ctrl+Z)">
+          <Undo2 aria-hidden="true" />
+          Undo
+        </Button>
+        <Button
+          variant="text"
+          size="xs"
+          disabled={!canRedo}
+          onClick={redo}
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          <Redo2 aria-hidden="true" />
+          Redo
+        </Button>
         <Button variant="text" size="xs" onClick={reprint}>
           Reprint
         </Button>

@@ -183,3 +183,37 @@ export function buildPalette(
   const stubSeeds = stub ? photoSeeds(stub.bmp) : [];
   return shuffle > 0 ? shuffled(mainSeeds, stubSeeds, shuffle) : calm(mainSeeds, stubSeeds);
 }
+
+export type ChipRole = "paper" | "ink" | "ink2" | "accent";
+
+// Ready-made colours for one colour row, taken from the photos: each photo colour turned into a
+// light and a dark version that suit the role. Tapping one locks it in.
+export function photoChips(role: ChipRole, main: Photo | null, stub: Photo | null): RGB[] {
+  const seeds = [...(main ? photoSeeds(main.bmp) : []), ...(stub ? photoSeeds(stub.bmp) : [])];
+
+  const out: RGB[] = [];
+  const add = (color: RGB) => {
+    // Colours that are almost the same would just be clutter
+    if (out.every((o) => o.some((v, i) => Math.abs(v - color[i]) > 10))) out.push(color);
+  };
+
+  for (const seed of seeds) {
+    const { hue, chroma } = hctOf(seed);
+    const grey = chroma < 5;
+    const soft = (k: number, lo: number, hi: number) => (grey ? chroma : clamp(chroma * k, lo, hi));
+
+    if (role === "paper") {
+      add(colour(hue, soft(0.22, 5, 16), 95));
+      add(colour(hue, soft(0.3, 6, 22), 10));
+    } else if (role === "ink") {
+      add(colour(hue, soft(0.3, 6, 20), 10));
+      add(colour(hue, soft(0.15, 4, 12), 94));
+    } else if (role === "ink2") {
+      add(colour(hue, clamp(chroma, 30, 70), 36));
+      add(colour(hue, clamp(chroma, 25, 60), 80));
+    } else {
+      add(accentOf(seed, false));
+    }
+  }
+  return out.slice(0, 8);
+}

@@ -9,6 +9,7 @@ import { TEMPLATES } from "@/lib/ticket/render/templates";
 import { DEFAULT_ADJUST } from "@/lib/ticket/settings";
 import type { Photo } from "@/lib/ticket/types";
 import { usePhotoStore } from "@/stores/photoStore";
+import { useSessionStore } from "@/stores/sessionStore";
 import { useTicketerStore } from "@/stores/ticketerStore";
 
 const FX_LABELS = {
@@ -28,6 +29,8 @@ export function UploadStep() {
   const swap = usePhotoStore((s) => s.swap);
   const copyMainToStub = usePhotoStore((s) => s.copyMainToStub);
   const dismissError = usePhotoStore((s) => s.dismissError);
+  const remember = useSessionStore((s) => s.remember);
+  const setRemember = useSessionStore((s) => s.setRemember);
 
   // The template that is actually drawn, which "recompose" may have changed for this size
   const { preset, tpl } = composeTicket(settings, { main, stub });
@@ -113,6 +116,17 @@ export function UploadStep() {
         <Button variant="text" className="self-start" onClick={() => updateAdjust(DEFAULT_ADJUST)}>
           Reset adjustments
         </Button>
+      </Section>
+
+      <Section
+        title="On this device"
+        hint="Photos and stickers stay in this browser only, never uploaded. Switching this off also deletes the saved copy, so use it on a shared computer."
+      >
+        <SwitchField
+          label="Keep photos and stickers between visits"
+          checked={remember}
+          onChange={setRemember}
+        />
       </Section>
     </>
   );
