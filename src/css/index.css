@@ -80,3 +80,120 @@
     @apply bg-background text-on-background font-display;
   }
 }
+
+/* Ticket motion. All of it is switched off for people who ask for less motion. */
+@layer components {
+  /* The preview leans toward the pointer, a light sheen follows it */
+  .tk-tilt {
+    transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition: transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .tk-sheen {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    border-radius: 0.375rem;
+    background: radial-gradient(
+      circle at var(--sx, 50%) var(--sy, 30%),
+      rgb(255 255 255 / 0.4),
+      transparent 45%
+    );
+    mix-blend-mode: soft-light;
+    opacity: 0;
+    transition: opacity 200ms;
+  }
+  .tk-tilt:hover .tk-sheen,
+  .tk-tilt[data-gyro] .tk-sheen {
+    opacity: 1;
+  }
+
+  .tk-print {
+    animation: tk-print 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .tk-flip-out {
+    animation: tk-flip-out 240ms ease-in both;
+  }
+  .tk-flip-in {
+    animation: tk-flip-in 260ms ease-out both;
+  }
+  .tk-stub {
+    animation: tk-tear 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .tk-char {
+    animation: tk-char 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 35ms);
+  }
+  .tk-drop-in {
+    animation: tk-drop-in 420ms cubic-bezier(0.3, 1.5, 0.5, 1);
+  }
+}
+
+@keyframes tk-print {
+  from {
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(-5%);
+  }
+  to {
+    clip-path: inset(0);
+    transform: none;
+  }
+}
+@keyframes tk-flip-out {
+  to {
+    transform: perspective(900px) rotateY(90deg);
+  }
+}
+@keyframes tk-flip-in {
+  from {
+    transform: perspective(900px) rotateY(-90deg);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes tk-tear {
+  0% {
+    transform: none;
+  }
+  35% {
+    transform: rotate(-5deg) translateX(-3px);
+  }
+  100% {
+    transform: translate(26px, 18px) rotate(14deg);
+    opacity: 0;
+  }
+}
+@keyframes tk-char {
+  from {
+    transform: perspective(200px) rotateX(-90deg);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes tk-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tk-tilt {
+    transform: none;
+  }
+  .tk-print,
+  .tk-flip-out,
+  .tk-flip-in,
+  .tk-stub,
+  .tk-char,
+  .tk-drop-in {
+    animation-duration: 0.01ms !important;
+  }
+}

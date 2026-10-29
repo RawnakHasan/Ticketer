@@ -5,14 +5,21 @@ import { Card } from "@/components/ui/Card";
 import { TextField } from "@/components/ui/TextField";
 import { Section, SegmentedField, SliderField, SwitchField } from "@/components/ticket/controls";
 import { composeTicket } from "@/lib/ticket/compose";
-import { copyFile, downloadFile, renderPosterFile, shareFile } from "@/lib/ticket/export";
+import {
+  copyFile,
+  downloadFile,
+  renderAllSizes,
+  renderPosterFile,
+  shareFile,
+} from "@/lib/ticket/export";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { clamp } from "@/lib/ticket/math";
 import { PRESETS } from "@/lib/ticket/presets";
 import { cn } from "@/lib/utils";
 import { usePhotoStore } from "@/stores/photoStore";
 import { useTicketerStore } from "@/stores/ticketerStore";
 
-type Action = "save" | "share" | "copy";
+type Action = "save" | "share" | "copy" | "all";
 
 export function ExportStep() {
   const settings = useTicketerStore((s) => s.settings);
@@ -32,11 +39,11 @@ export function ExportStep() {
       // Read at click time so the export always matches what is on screen
       const { settings: current } = useTicketerStore.getState();
       const photos = usePhotoStore.getState();
-      const file = await renderPosterFile(
-        current,
-        { main: photos.main, stub: photos.stub },
-        action === "copy",
-      );
+      const poster = { main: photos.main, stub: photos.stub };
+      const file =
+        action === "all"
+          ? await renderAllSizes(current, poster)
+          : await renderPosterFile(current, poster, action === "copy");
 
       if (action === "copy") {
         await copyFile(file);
@@ -111,6 +118,11 @@ export function ExportStep() {
         )}
 
         <SwitchField
+          label="Auto-recompose for each size"
+          checked={settings.recompose}
+          onChange={(recompose) => update({ recompose })}
+        />
+        <SwitchField
           label="Safe-area overlay"
           checked={settings.safeOverlay}
           onChange={(safeOverlay) => update({ safeOverlay })}
@@ -144,6 +156,16 @@ export function ExportStep() {
           />
         )}
         <SegmentedField
+          label="Side"
+          value={settings.exportSide}
+          options={[
+            { value: "front", label: "Front" },
+            { value: "back", label: "Back" },
+            { value: "both", label: "Both (.zip)" },
+          ]}
+          onChange={(exportSide) => update({ exportSide })}
+        />
+        <SegmentedField
           label="Scale"
           value={String(settings.scale) as "1" | "2"}
           options={[
@@ -165,7 +187,14 @@ export function ExportStep() {
           disabled={!main || busy !== null}
           onClick={() => run("save")}
         >
-          {busy === "save" ? "Printing…" : "Download poster"}
+          {busy === "save" ? (
+            <>
+              <LoadingIndicator size={28} aria-label="Printing" />
+              Printing…
+            </>
+          ) : (
+            "Download poster"
+          )}
         </Button>
         <div className="flex gap-2">
           <Button
@@ -186,6 +215,10 @@ export function ExportStep() {
           </Button>
         </div>
 
+        <Button variant="outlined" disabled={!main || busy !== null} onClick={() => run("all")}>
+          {busy === "all" ? "Printing every size…" : "All sizes (.zip)"}
+        </Button>
+
         {!main && (
           <p className="rounded-xl bg-secondary-container px-4 py-3 text-sm text-on-secondary-container">
             Add a main photo first. Everything stays on your device.
@@ -201,7 +234,16 @@ export function ExportStep() {
                 : "bg-error-container text-on-error-container",
             )}
           >
-            {status.text}
+            <span className="flex items-center justify-between gap-3">
+              <span>{status.text}</span>
+              {status.ok && (
+                <span
+                  key={status.text}
+                  aria-hidden="true"
+                  className="tk-stub h-7 w-11 shrink-0 rounded-md border-[1.5px] border-dashed border-current"
+                />
+              )}
+            </span>
           </p>
         )}
       </div>

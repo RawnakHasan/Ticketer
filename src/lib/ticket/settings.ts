@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { makeDefaultFields, makeDefaultShow } from "./fields";
-import { BACKDROP_IDS, FX_IDS, LAYOUT_IDS, STOCK_IDS, TEMPLATE_IDS } from "./ids";
+import { BACKDROP_IDS, EXPORT_SIDE_IDS, FX_IDS, LAYOUT_IDS, STOCK_IDS, TEMPLATE_IDS } from "./ids";
 
 const rgbSchema = z.tuple([z.number(), z.number(), z.number()]);
 
@@ -53,6 +53,18 @@ export const settingsSchema = z.object({
   layout: z.enum(LAYOUT_IDS).default("single"),
   tilt: z.number().default(0),
   shadow: z.number().default(100),
+  // Backdrop motion (flow and aurora only)
+  speed: z.number().default(1),
+  paused: z.boolean().default(false),
+  // Player card: how far along the track is, in percent
+  progress: z.number().default(35),
+  // Where the stamp sits as a fraction of the ticket. null = the template's own spot.
+  stampPos: z.object({ x: z.number(), y: z.number() }).nullable().default(null),
+  // Pick the best template for each export size, unless that template was chosen on purpose
+  recompose: z.boolean().default(false),
+  // "<presetId>:<templateId>" entries the person picked by hand, so recompose leaves them alone
+  keep: z.record(z.string(), z.boolean()).default(() => ({})),
+  exportSide: z.enum(EXPORT_SIDE_IDS).default("front"),
   accent: rgbSchema.nullable().default(null),
   ink: rgbSchema.nullable().default(null),
   stubArea: stubAreaSchema.default(() => ({ ...DEFAULT_STUB_AREA })),

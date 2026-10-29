@@ -1,6 +1,7 @@
 import qrcode from "qrcode-generator";
 
-import { rgb } from "../color";
+import { rgb, rgba } from "../color";
+import type { FieldKey } from "../fields";
 import { drawCover } from "../photo";
 import type { TicketState } from "./types";
 
@@ -246,3 +247,116 @@ export function drawMainPhoto(
     c.restore();
   }
 }
+type Kit = ReturnType<typeof ticketKit>;
+export type { Kit };
+
+// Everything a template needs at the start of a render: a canvas on paper, colour strings,
+// a text fitter and a way to ask whether a field is shown and filled in.
+export function ticketKit(S: TicketState, k: number, W: number, baseH: number, radius: number) {
+  const dy = S.dy;
+  const H = baseH + dy;
+  const warnings: string[] = [];
+  const { canvas, c } = createTicketCanvas(S, k, W, H, radius);
+  const { st, f, show } = S;
+
+  return {
+    canvas,
+    c,
+    W,
+    H,
+    dy,
+    f,
+    show,
+    st,
+    warnings,
+    fit: makeFit(c, warnings),
+    on: (key: FieldKey) => Boolean(show[key] && f[key]?.trim()),
+    A: rgb(st.acc),
+    OA: rgb(st.onacc),
+    I: rgb(st.ink),
+    M: rgba(st.ink, 0.74),
+  };
+}
+
+// A pill with a short label, used for tier and info lines
+export function chipAt(
+  c: Ctx,
+  fit: Fit,
+  text: string,
+  x: number,
+  y: number,
+  A: string,
+  OA: string,
+) {
+  const r = fit(text, FM(500), 380, 20, 13, 11, 1, "Label");
+  const w = c.measureText(r.ls[0]).width + 28;
+  c.fillStyle = A;
+  c.beginPath();
+  c.roundRect(x, y, w, 30, 15);
+  c.fill();
+  c.fillStyle = OA;
+  c.textAlign = "left";
+  c.fillText(r.ls[0], x + 14, y + 20);
+}
+
+// The round "ADMIT ONE" stamp. `at` is the template's own spot, `S.sp` moves it.
+export function stampAt(
+  c: Ctx,
+  S: TicketState,
+  W: number,
+  H: number,
+  at: [number, number],
+  A: string,
+  OA: string,
+) {
+  const [x, y] = S.sp ? [S.sp.x * W, S.sp.y * H] : at;
+  c.save();
+  c.translate(x, y);
+  c.scale(S.ssc, S.ssc);
+  c.rotate(-0.24);
+  c.fillStyle = A;
+  c.beginPath();
+  c.arc(0, 0, 44, 0, 7);
+  c.fill();
+  c.fillStyle = OA;
+  c.textAlign = "center";
+  c.font = '800 17px "Bricolage Grotesque"';
+  c.fillText("ADMIT", 0, -2);
+  c.fillText("ONE", 0, 17);
+  c.restore();
+}
+
+// The dashed tear line
+export function tearLine(c: Ctx, S: TicketState, x1: number, y1: number, x2: number, y2: number) {
+  c.strokeStyle = rgba(S.st.ink, 0.42);
+  c.lineWidth = 2;
+  c.setLineDash([7, 7]);
+  c.beginPath();
+  c.moveTo(x1, y1);
+  c.lineTo(x2, y2);
+  c.stroke();
+  c.setLineDash([]);
+}
+
+// Postage-stamp edge: half circles cut out all the way round
+export function scallop(c: Ctx, W: number, H: number) {
+  c.globalCompositeOperation = "destination-out";
+  c.beginPath();
+  for (let x = 11; x < W; x += 22) {
+    c.moveTo(x + 7, 0);
+    c.arc(x, 0, 7, 0, 7);
+    c.moveTo(x + 7, H);
+    c.arc(x, H, 7, 0, 7);
+  }
+  for (let y = 11; y < H; y += 22) {
+    c.moveTo(7, y);
+    c.arc(0, y, 7, 0, 7);
+    c.moveTo(W + 7, y);
+    c.arc(W, y, 7, 0, 7);
+  }
+  c.fill();
+  c.globalCompositeOperation = "source-over";
+}
+
+// What the QR code encodes: the link, or the serial when no link is set
+export const qrText = (S: TicketState) => S.f.url.trim() || `ticketer:${S.f.serial}`;

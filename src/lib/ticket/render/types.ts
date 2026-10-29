@@ -23,7 +23,12 @@ export type TicketState = {
   dy: number;
   // Stamp position as a fraction of the ticket, or null for the template default
   sp: { x: number; y: number } | null;
+  // Stamp scale, for the thump when it is placed
   ssc: number;
+  // Draw the back of the ticket instead of the front
+  back: boolean;
+  // Player card: playback position in percent
+  prog: number;
   layout: LayoutId;
   tilt: number;
   shadow: number;
@@ -43,5 +48,9 @@ export type Template = {
   photoBox: readonly [number, number, number, number];
   // Width over height of the stub photo, for the crop in the upload step
   stubRatio: (sa: StubArea) => number;
+  // Which stub photo controls the Style step shows: the admit stub styles, a photo width, or none
+  stubControls: "styles" | "width" | "none";
+  // False when the template never draws the stub photo (it still leads the second ticket in "Two, angled")
+  usesStub: boolean;
   render: (state: TicketState, scale: number) => Rendered;
 };

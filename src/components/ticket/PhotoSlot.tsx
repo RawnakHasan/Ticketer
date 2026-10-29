@@ -16,15 +16,32 @@ type PhotoSlotProps = {
   ratio: number;
   filter: string;
   hint?: string;
+  // The photo is too small for the export size and will look soft
+  lowRes?: boolean;
 };
 
-export function PhotoSlot({ slot, label, ratio, filter, hint }: PhotoSlotProps) {
+export function PhotoSlot({ slot, label, ratio, filter, hint, lowRes }: PhotoSlotProps) {
   const photo = usePhotoStore((s) => s[slot]);
   const add = usePhotoStore((s) => s.add);
   const patch = usePhotoStore((s) => s.patch);
   const clear = usePhotoStore((s) => s.clear);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+
+  // One picker for both states: inside the drop zone when empty, and for "Replace" once a photo is set
+  const fileInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept="image/*"
+      className="sr-only"
+      onChange={(event) => {
+        const file = event.target.files?.[0];
+        if (file) void add(slot, file);
+        event.target.value = "";
+      }}
+    />
+  );
 
   return (
     <Section
@@ -76,6 +93,15 @@ export function PhotoSlot({ slot, label, ratio, filter, hint }: PhotoSlotProps) 
               Replace
             </Button>
           </div>
+          {lowRes && (
+            <p
+              role="status"
+              className="rounded-xl bg-secondary-container px-4 py-3 text-sm text-on-secondary-container"
+            >
+              Low resolution for this export size. It may look soft; pick a bigger photo or a
+              smaller size.
+            </p>
+          )}
         </>
       ) : (
         <label
@@ -101,20 +127,12 @@ export function PhotoSlot({ slot, label, ratio, filter, hint }: PhotoSlotProps) 
           <ImagePlus aria-hidden="true" className="size-8" />
           <span className="text-base font-medium text-on-surface">Tap or drop a photo</span>
           <span className="text-sm">JPG, PNG, WebP or HEIC{hint ? ` · ${hint}` : ""}</span>
+          {/* Inside the label, so a click or tap on the zone opens the picker and focus shows on it */}
+          {fileInput}
         </label>
       )}
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="sr-only"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void add(slot, file);
-          event.target.value = "";
-        }}
-      />
+      {photo ? fileInput : null}
     </Section>
   );
 }

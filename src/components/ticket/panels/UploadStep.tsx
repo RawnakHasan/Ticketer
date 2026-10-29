@@ -2,10 +2,12 @@ import { Button } from "@/components/ui/Button";
 import { Section, SegmentedField, SliderField, SwitchField } from "@/components/ticket/controls";
 import { PhotoSlot } from "@/components/ticket/PhotoSlot";
 import { FX_IDS } from "@/lib/ticket/ids";
+import { composeTicket } from "@/lib/ticket/compose";
 import { mainFrame } from "@/lib/ticket/render/frame";
 import { photoFilter } from "@/lib/ticket/render/state";
 import { TEMPLATES } from "@/lib/ticket/render/templates";
 import { DEFAULT_ADJUST } from "@/lib/ticket/settings";
+import type { Photo } from "@/lib/ticket/types";
 import { usePhotoStore } from "@/stores/photoStore";
 import { useTicketerStore } from "@/stores/ticketerStore";
 
@@ -27,7 +29,12 @@ export function UploadStep() {
   const copyMainToStub = usePhotoStore((s) => s.copyMainToStub);
   const dismissError = usePhotoStore((s) => s.dismissError);
 
-  const template = TEMPLATES[settings.tpl];
+  // The template that is actually drawn, which "recompose" may have changed for this size
+  const { preset, tpl } = composeTicket(settings, { main, stub });
+  const template = TEMPLATES[tpl];
+  const exportShort = Math.min(preset.w, preset.h) * settings.scale;
+  const isLowRes = (photo: Photo | null) =>
+    photo !== null && Math.max(photo.ow, photo.oh) / photo.z < exportShort * 0.75;
   const [frameW, frameH] = mainFrame(
     template.photoBox,
     settings.mainShape,
@@ -51,13 +58,21 @@ export function UploadStep() {
         </div>
       )}
 
-      <PhotoSlot slot="main" label="Main photo" ratio={frameW / frameH} filter={filter} />
+      <PhotoSlot
+        slot="main"
+        label="Main photo"
+        ratio={frameW / frameH}
+        filter={filter}
+        lowRes={isLowRes(main)}
+      />
       <PhotoSlot
         slot="stub"
         label="Stub photo"
         ratio={template.stubRatio(settings.stubArea)}
         filter={filter}
-        hint="uses main until added"
+        hint={
+          template.usesStub ? "uses main until added" : "leads the second ticket in “Two, angled”"
+        }
       />
 
       <div className="flex gap-2">

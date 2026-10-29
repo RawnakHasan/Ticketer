@@ -1,3 +1,6 @@
+import { AiFill } from "@/components/ticket/AiFill";
+import { SliderField } from "@/components/ticket/controls";
+import { Ticker } from "@/components/ticket/Ticker";
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
@@ -11,6 +14,8 @@ export function DetailsStep() {
   const setField = useTicketerStore((s) => s.setField);
   const setFields = useTicketerStore((s) => s.setFields);
   const setShow = useTicketerStore((s) => s.setShow);
+  const progress = useTicketerStore((s) => s.settings.progress);
+  const update = useTicketerStore((s) => s.update);
 
   function shuffleSample() {
     const [title, sub, place] = SAMPLES[Math.floor(Math.random() * SAMPLES.length)];
@@ -19,6 +24,24 @@ export function DetailsStep() {
 
   return (
     <div className="flex flex-col gap-4 p-3">
+      <AiFill />
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-outline-variant p-4">
+        <Ticker label="Serial" text={fields.serial ?? ""} />
+        <Ticker label="Date" text={fields.date ?? ""} />
+      </div>
+
+      {tpl === "player" && (
+        <SliderField
+          label="Playback progress"
+          value={progress}
+          min={0}
+          max={100}
+          format={(v) => `${v}%`}
+          onChange={(value) => update({ progress: value })}
+        />
+      )}
+
       <div className="flex flex-wrap gap-2">
         <Button variant="tonal" onClick={shuffleSample}>
           Shuffle sample text

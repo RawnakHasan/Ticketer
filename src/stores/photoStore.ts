@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import { loadPhoto } from "@/lib/ticket/photo";
 import type { Photo, PhotoSlot } from "@/lib/ticket/types";
+import { useViewStore } from "@/stores/viewStore";
 
 type PhotoState = {
   main: Photo | null;
@@ -25,7 +26,10 @@ export const usePhotoStore = create<PhotoState>()((set, get) => ({
   error: "",
   add: async (slot, file) => {
     try {
+      const hadMain = get().main !== null;
       set({ ...only(slot, await loadPhoto(file)), error: "" });
+      // The first main photo "prints" the ticket
+      if (slot === "main" && !hadMain) useViewStore.getState().reprint();
     } catch (e) {
       set({ error: e instanceof Error ? e.message : "That file could not be read." });
     }
