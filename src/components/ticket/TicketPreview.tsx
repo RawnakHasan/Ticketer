@@ -9,7 +9,7 @@ import { clamp } from "@/lib/ticket/math";
 import type { Preset } from "@/lib/ticket/presets";
 import { layoutGroup } from "@/lib/ticket/render/layout";
 import { TEMPLATES } from "@/lib/ticket/render/templates";
-import { hitHandle, hitSticker } from "@/lib/ticket/sticker";
+import { hitHandle, hitSticker, onSide } from "@/lib/ticket/sticker";
 import type { TicketState } from "@/lib/ticket/render/types";
 import { useTicketCanvas } from "@/hooks/useTicketCanvas";
 import { cn } from "@/lib/utils";
@@ -96,6 +96,8 @@ export function TicketPreview() {
   const selectedStickerId = useStickerStore((s) => s.selectedId);
 
   const side = useViewStore((s) => s.side);
+  // Only the stickers on the side being shown can be grabbed
+  const onThisSide = stickers.filter((s) => onSide(s, side));
   const flip = useViewStore((s) => s.flip);
   const printKey = useViewStore((s) => s.printKey);
   const dragStamp = useViewStore((s) => s.dragStamp);
@@ -113,7 +115,7 @@ export function TicketPreview() {
   const canDragStamp =
     dragStamp && settings.layout === "single" && side === "front" && Boolean(settings.show.stamp);
   // Stickers can be dragged on the front of a single ticket, whether or not the stamp is
-  const canDragSticker = settings.layout === "single" && side === "front" && stickers.length > 0;
+  const canDragSticker = settings.layout === "single" && onThisSide.length > 0;
   const canTiltWithPhone =
     typeof window !== "undefined" &&
     "DeviceOrientationEvent" in window &&
@@ -255,7 +257,7 @@ export function TicketPreview() {
                     fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
                     // A second finger on a selected sticker: pinch it
-                    const chosen = stickers.find((s) => s.id === selectedStickerId);
+                    const chosen = onThisSide.find((s) => s.id === selectedStickerId);
                     if (canDragSticker && chosen && fingers.current.size === 2) {
                       const [a, b] = [...fingers.current.values()];
                       draggingSticker.current = null;
@@ -287,7 +289,7 @@ export function TicketPreview() {
                         };
                         return;
                       }
-                      const hit = hitSticker(stickers, at.x, at.y, at.w, at.h);
+                      const hit = hitSticker(onThisSide, at.x, at.y, at.w, at.h);
                       if (hit) {
                         event.currentTarget.setPointerCapture(event.pointerId);
                         draggingSticker.current = {
@@ -325,7 +327,7 @@ export function TicketPreview() {
                     const handle = handleDrag.current;
                     if (handle) {
                       const at = pointOnTicket(event, preset, state, [-0.2, 1.2]);
-                      const sticker = stickers.find((s) => s.id === handle.id);
+                      const sticker = onThisSide.find((s) => s.id === handle.id);
                       if (!sticker) return;
                       const dx = (at.x - sticker.x) * at.w;
                       const dy = (at.y - sticker.y) * at.h;
@@ -368,11 +370,11 @@ export function TicketPreview() {
                     if (canDragSticker) {
                       // A grab cursor over a sticker, a resize or turn cursor over its handles
                       const at = pointOnTicket(event, preset, state, [-0.2, 1.2]);
-                      const chosen = stickers.find((s) => s.id === selectedStickerId);
+                      const chosen = onThisSide.find((s) => s.id === selectedStickerId);
                       const onHandle = chosen
                         ? hitHandle(chosen, at.x, at.y, at.w, at.h, 14 * at.unit)
                         : null;
-                      const over = hitSticker(stickers, at.x, at.y, at.w, at.h);
+                      const over = hitSticker(onThisSide, at.x, at.y, at.w, at.h);
                       event.currentTarget.style.cursor =
                         onHandle === "rotate"
                           ? "alias"

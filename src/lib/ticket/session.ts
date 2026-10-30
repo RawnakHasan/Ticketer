@@ -117,7 +117,9 @@ async function restore() {
   const stickers: Sticker[] = [];
   for (const saved of record.stickers) {
     const photo = await reload(saved.photo);
-    if (photo) stickers.push({ ...saved, photo });
+    // Stickers saved before sides and pack designs existed get these defaults
+    const older: Pick<Sticker, "side" | "art" | "flip"> = { side: "front", art: null, flip: false };
+    if (photo) stickers.push({ ...older, ...saved, photo });
   }
 
   usePhotoStore.getState().restore(main, stub);

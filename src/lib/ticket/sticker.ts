@@ -1,9 +1,16 @@
 import { materialShapePath, type MaterialShapeName } from "../shapes/materialShapes";
+import type { RGB } from "./color";
 import { loadPhoto, drawCover, shownAspect } from "./photo";
+import { loadArtPhoto } from "./stickerImage";
 import type { Photo } from "./types";
 
 // "cutout" keeps the picture's own outline (a transparent PNG). A shape name crops the photo into it.
 export type StickerShape = MaterialShapeName | "cutout";
+
+// Which side of the ticket a sticker is on
+export type StickerSide = "front" | "back" | "both";
+
+export const onSide = (s: Sticker, side: "front" | "back") => s.side === "both" || s.side === side;
 
 export type Sticker = {
   id: string;
@@ -23,6 +30,9 @@ export type Sticker = {
   border: boolean;
   // Mirrored left to right
   flip: boolean;
+  side: StickerSide;
+  // Set for pack stickers: which design and its main colour, so the colour can be changed later
+  art: { id: string; color: RGB } | null;
 };
 
 // Which centre lines a moving sticker is snapped to, for the preview's guide lines
@@ -64,6 +74,30 @@ export async function loadSticker(file: File, index: number): Promise<Sticker> {
     rot: 0,
     border: true,
     flip: false,
+    side: "front",
+    art: null,
+  };
+}
+
+// A pack sticker in `color`. `index` is how many stickers there already are.
+export async function loadArtSticker(id: string, color: RGB, index: number): Promise<Sticker> {
+  const photo = await loadArtPhoto(id, color);
+  const step = index % 3;
+
+  return {
+    id: crypto.randomUUID(),
+    photo,
+    shape: "cutout",
+    hasAlpha: true,
+    x: 0.74 - step * 0.08,
+    y: 0.3 + step * 0.06,
+    // Wide designs such as tape need to be bigger to look the same size as the others
+    size: photo.w / photo.h > 1.8 ? 0.4 : 0.24,
+    rot: 0,
+    border: true,
+    flip: false,
+    side: "front",
+    art: { id, color },
   };
 }
 

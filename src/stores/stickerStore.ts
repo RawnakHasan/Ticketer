@@ -1,9 +1,12 @@
 import { create } from "zustand";
 
+import type { RGB } from "@/lib/ticket/color";
+import { loadArtPhoto } from "@/lib/ticket/stickerImage";
 import type { Photo } from "@/lib/ticket/types";
 import {
   MAX_STICKERS,
   dropSprite,
+  loadArtSticker,
   loadSticker,
   type Sticker,
   type StickerGuides,
@@ -18,6 +21,12 @@ type StickerState = {
   error: string;
   setGuides: (guides: StickerGuides | null) => void;
   add: (file: File) => Promise<void>;
+  // Adds a design from the built-in pack
+  addArt: (id: string, color: RGB) => Promise<void>;
+  // Draws a pack sticker again in another colour
+  recolor: (id: string, color: RGB) => Promise<void>;
+  // Swaps the picture of a sticker, for example for a cutout of it, and applies `patch` with it
+  replacePhoto: (id: string, photo: Photo, patch?: Partial<Omit<Sticker, "id" | "photo">>) => void;
   patch: (id: string, patch: Partial<Omit<Sticker, "id" | "photo">>) => void;
   patchPhoto: (id: string, patch: Partial<Photo>) => void;
   select: (id: string | null) => void;
@@ -55,6 +64,33 @@ export const useStickerStore = create<StickerState>()((set, get) => ({
       set({ error: e instanceof Error ? e.message : "That file could not be read." });
     }
   },
+  addArt: async (id, color) => {
+    if (get().items.length >= MAX_STICKERS) {
+      set({ error: `A ticket holds up to ${MAX_STICKERS} stickers.` });
+      return;
+    }
+    try {
+      const sticker = await loadArtSticker(id, color, get().items.length);
+      set((s) => ({ items: [...s.items, sticker], selectedId: sticker.id, error: "" }));
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : "Could not add that sticker." });
+    }
+  },
+  recolor: async (id, color) => {
+    const art = get().items.find((s) => s.id === id)?.art;
+    if (!art) return;
+    try {
+      const photo = await loadArtPhoto(art.id, color);
+      // The sticker may have been removed, or recoloured again, while the picture was drawn
+      const now = get().items.find((s) => s.id === id)?.art;
+      if (!now || now.color !== art.color) return;
+      get().replacePhoto(id, photo, { art: { id: art.id, color } });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : "Could not change that colour." });
+    }
+  },
+  replacePhoto: (id, photo, patch = {}) =>
+    set((s) => ({ items: mapOne(s.items, id, (it) => ({ ...it, ...patch, photo })) })),
   patch: (id, patch) => set((s) => ({ items: mapOne(s.items, id, (it) => ({ ...it, ...patch })) })),
   patchPhoto: (id, patch) =>
     set((s) => ({

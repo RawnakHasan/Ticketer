@@ -1,4 +1,4 @@
-import { drawStickers } from "../sticker";
+import { drawStickers, onSide } from "../sticker";
 import type { Preset } from "../presets";
 import { backdropClock, drawAnimatedBackdrop, drawStaticBackdrop } from "./backdrop";
 import { renderBack } from "./back";
@@ -56,8 +56,14 @@ export function drawPoster(
     };
     const render = S.back ? renderBack : TEMPLATES[S.tpl].render;
     const { canvas: rendered, warnings: w } = render(ticket, k);
-    // Stickers go on the front only, over everything the template drew
-    if (!S.back) drawStickers(rendered, S.stickers, S.selectedSticker, S.stickerGuides);
+    // Stickers go over everything the template drew, on the side each one is set to
+    const side = S.back ? "back" : "front";
+    drawStickers(
+      rendered,
+      S.stickers.filter((s) => onSide(s, side)),
+      S.selectedSticker,
+      S.stickerGuides,
+    );
 
     c.save();
     if (!preset.bare) {
