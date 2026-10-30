@@ -1,6 +1,8 @@
+import { luminance } from "../color";
 import { drawStickers, onSide } from "../sticker";
 import { setTitleFont } from "../titleFonts";
 import type { Preset } from "../presets";
+import { applyFoil } from "./foil";
 import { backdropClock, drawAnimatedBackdrop, drawStaticBackdrop } from "./backdrop";
 import { renderBack } from "./back";
 import { layoutGroup } from "./layout";
@@ -58,6 +60,8 @@ export function drawPoster(
     const render = S.back ? renderBack : TEMPLATES[S.tpl].render;
     setTitleFont(S.titleFont);
     const { canvas: rendered, warnings: w } = render(ticket, k);
+    // Foil goes over the paper and its printing, under the stickers
+    applyFoil(rendered, S.foil, luminance(ticket.st.paper) < 0.4);
     // Stickers go over everything the template drew, on the side each one is set to
     const side = S.back ? "back" : "front";
     drawStickers(

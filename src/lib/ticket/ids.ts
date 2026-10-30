@@ -57,3 +57,6 @@ export const TITLE_FONT_IDS = [
   "mono",
 ] as const;
 export type TitleFontId = (typeof TITLE_FONT_IDS)[number];
+
+export const FOIL_IDS = ["off", "holo", "gold", "silver"] as const;
+export type FoilId = (typeof FOIL_IDS)[number];

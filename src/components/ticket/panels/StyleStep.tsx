@@ -6,7 +6,7 @@ import { Section, SegmentedField, SliderField, SwitchField } from "@/components/
 import { StickerSection } from "@/components/ticket/StickerSection";
 import { TemplateThumb } from "@/components/ticket/TemplateThumb";
 import { contrastRatio, mix } from "@/lib/ticket/color";
-import { TITLE_FONT_IDS } from "@/lib/ticket/ids";
+import { FOIL_IDS, TITLE_FONT_IDS } from "@/lib/ticket/ids";
 import { photoChips } from "@/lib/ticket/palette";
 import { TITLE_FONTS } from "@/lib/ticket/titleFonts";
 import {
@@ -44,6 +44,13 @@ const STOCK_LABELS = {
   sage: "Sage",
   rose: "Rose",
   photo: "From photo",
+} as const;
+
+const FOIL_LABELS = {
+  off: "No foil",
+  holo: "Holographic",
+  gold: "Gold",
+  silver: "Silver",
 } as const;
 
 // One tap sets paper, backdrop, grain and corners together
@@ -375,6 +382,45 @@ export function StyleStep() {
           <p className="text-sm text-on-surface-variant">
             Dragging works with the One ticket layout, front side.
           </p>
+        )}
+      </Section>
+
+      <Section
+        title="Foil"
+        hint="Holographic or metallic shine over the paper. The printing stays readable. Tilt the preview to move the shine."
+      >
+        <div role="group" aria-label="Foil" className="flex flex-wrap gap-2">
+          {FOIL_IDS.map((id) => (
+            <ToggleButton
+              key={id}
+              variant="outlined"
+              size="xs"
+              pressed={settings.foil === id}
+              onPressedChange={() => update({ foil: id })}
+            >
+              {FOIL_LABELS[id]}
+            </ToggleButton>
+          ))}
+        </div>
+        {settings.foil !== "off" && (
+          <>
+            <SliderField
+              label="Strength"
+              value={settings.foilStrength}
+              min={10}
+              max={100}
+              format={(v) => `${v}%`}
+              onChange={(foilStrength) => update({ foilStrength })}
+            />
+            <SliderField
+              label="Angle of the bands"
+              value={settings.foilAngle}
+              min={0}
+              max={360}
+              format={(v) => `${v}°`}
+              onChange={(foilAngle) => update({ foilAngle })}
+            />
+          </>
         )}
       </Section>
 

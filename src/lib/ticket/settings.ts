@@ -4,6 +4,7 @@ import { makeDefaultFields, makeDefaultShow } from "./fields";
 import {
   BACKDROP_IDS,
   EXPORT_SIDE_IDS,
+  FOIL_IDS,
   FX_IDS,
   LAYOUT_IDS,
   STOCK_IDS,
@@ -56,6 +57,10 @@ export const settingsSchema = z.object({
   tpl: z.enum(TEMPLATE_IDS).default("admit"),
   stock: z.enum(STOCK_IDS).default("light"),
   titleFont: z.enum(TITLE_FONT_IDS).default("grotesk"),
+  // Foil laid over the paper, like a holographic or metallic print
+  foil: z.enum(FOIL_IDS).default("off"),
+  foilStrength: z.number().min(0).max(100).default(55),
+  foilAngle: z.number().min(0).max(360).default(35),
   grain: z.boolean().default(true),
   notched: z.boolean().default(false),
   backdrop: z.enum(BACKDROP_IDS).default("grad"),

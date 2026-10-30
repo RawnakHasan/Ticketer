@@ -22,13 +22,14 @@ export function useTicketCanvas(canvasRef: RefObject<HTMLCanvasElement | null>) 
   const stickerGuides = useStickerStore((s) => s.guides);
   const side = useViewStore((s) => s.side);
   const stampScale = useViewStore((s) => s.stampScale);
+  const foilShift = useViewStore((s) => s.foilShift);
   const fontsReady = useFontsReady();
   const [warnings, setWarnings] = useState<string[]>([]);
 
   const { state, preset, tpl } = composeTicket(
     settings,
     { main, stub, stickers },
-    { back: side === "back", stampScale, selectedSticker, stickerGuides },
+    { back: side === "back", stampScale, selectedSticker, stickerGuides, foilShift },
   );
   // The moving backdrop is drawn on its own canvas behind this one, so the poster is drawn without it
   const animated = isAnimatedBackdrop(state.backdrop);

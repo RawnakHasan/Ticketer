@@ -18,6 +18,8 @@ export type ViewOptions = {
   back?: boolean;
   // Stamp scale while it thumps
   stampScale?: number;
+  // Where the foil's bands are, 0 to 1. The preview moves it as the ticket tilts.
+  foilShift?: number;
   // Sticker to outline in the preview
   selectedSticker?: string | null;
   stickerGuides?: StickerGuides | null;
@@ -101,6 +103,12 @@ export function buildTicketState(
     backdrop: settings.backdrop,
     mkStock,
     titleFont: settings.titleFont,
+    foil: {
+      style: settings.foil,
+      strength: settings.foilStrength,
+      angle: settings.foilAngle,
+      shift: view.foilShift ?? 0.5,
+    },
     stickers: photos.stickers ?? [],
     selectedSticker: view.selectedSticker ?? null,
     stickerGuides: view.stickerGuides ?? null,

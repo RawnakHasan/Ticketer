@@ -20,6 +20,18 @@ import { useStickerStore } from "@/stores/stickerStore";
 import { useTicketerStore } from "@/stores/ticketerStore";
 import { useViewStore } from "@/stores/viewStore";
 
+// Slides the foil's shine along its bands as the ticket tilts. `x` and `y` are how far the pointer
+// or the phone is from the middle, -0.5 to 0.5. Does nothing without foil.
+function moveFoil(x: number, y: number) {
+  const { foil, foilAngle } = useTicketerStore.getState().settings;
+  if (foil === "off") return;
+  const rad = (foilAngle * Math.PI) / 180;
+  const shift = clamp(0.5 + x * Math.cos(rad) + y * Math.sin(rad), 0, 1);
+  const view = useViewStore.getState();
+  // Each change redraws the ticket, so only a real movement counts
+  if (Math.abs(view.foilShift - shift) > 0.015) view.setFoilShift(shift);
+}
+
 // Keeps an angle in -180 to 180 degrees
 const wrapDegrees = (degrees: number) => ((((degrees + 180) % 360) + 360) % 360) - 180;
 
@@ -174,6 +186,7 @@ export function TicketPreview() {
       el.style.setProperty("--ry", `${gamma * 10}deg`);
       el.style.setProperty("--sx", `${(gamma + 1) * 50}%`);
       el.style.setProperty("--sy", `${(beta + 1) * 50}%`);
+      moveFoil(gamma / 2, beta / 2);
     };
     addEventListener("deviceorientation", onTilt);
     return () => {
@@ -193,6 +206,7 @@ export function TicketPreview() {
     const style = event.currentTarget.style;
     style.setProperty("--ry", `${x * 10}deg`);
     style.setProperty("--rx", `${-y * 10}deg`);
+    moveFoil(x, y);
     style.setProperty("--sx", `${(x + 0.5) * 100}%`);
     style.setProperty("--sy", `${(y + 0.5) * 100}%`);
   }
@@ -200,6 +214,7 @@ export function TicketPreview() {
   function settle(event: PointerEvent<HTMLDivElement>) {
     event.currentTarget.style.setProperty("--ry", "0deg");
     event.currentTarget.style.setProperty("--rx", "0deg");
+    moveFoil(0, 0);
   }
 
   async function toggleGyro() {

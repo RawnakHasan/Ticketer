@@ -19,6 +19,9 @@ type ViewState = {
   // Colour blindness the preview is shown as. Preview only.
   vision: VisionId;
   setVision: (vision: VisionId) => void;
+  // Where the foil's shine sits, 0 to 1, moved by tilting the ticket
+  foilShift: number;
+  setFoilShift: (shift: number) => void;
   showBack: () => void;
   toggleSide: () => void;
   endFlip: () => void;
@@ -41,6 +44,8 @@ export const useViewStore = create<ViewState>()((set, get) => ({
   message: "",
   vision: "none",
   setVision: (vision) => set({ vision }),
+  foilShift: 0.5,
+  setFoilShift: (foilShift) => set({ foilShift }),
   showBack: () => set({ side: "back" }),
   toggleSide: () => {
     const next = get().side === "back" ? "front" : "back";

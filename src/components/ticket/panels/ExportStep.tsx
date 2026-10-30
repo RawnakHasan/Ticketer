@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { buttonVariants } from "@/components/ui/Button/variant";
 import { Card } from "@/components/ui/Card";
 import { TextField } from "@/components/ui/TextField";
 import { Section, SegmentedField, SliderField, SwitchField } from "@/components/ticket/controls";
@@ -14,6 +15,8 @@ import {
 } from "@/lib/ticket/export";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { clamp } from "@/lib/ticket/math";
+import { renderPrintSheet, type SheetOptions } from "@/lib/ticket/printSheet";
+import { openProject, saveProject } from "@/lib/ticket/project";
 import { shareUrl } from "@/lib/ticket/share";
 import { PRESETS } from "@/lib/ticket/presets";
 import { cn } from "@/lib/utils";
@@ -30,6 +33,14 @@ export function ExportStep() {
   const stub = usePhotoStore((s) => s.stub);
   const [busy, setBusy] = useState<Action | null>(null);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  // Print sheet options. They only matter for the sheet, so they are not saved with the ticket.
+  const [sheet, setSheet] = useState<SheetOptions>({
+    paper: "a4",
+    ticketWidthMm: 70,
+    copies: 6,
+    cropMarks: true,
+  });
+  const [printing, setPrinting] = useState(false);
 
   const { preset } = composeTicket(settings, { main, stub });
   const canCopy = typeof ClipboardItem !== "undefined";
@@ -207,6 +218,138 @@ export function ExportStep() {
           >
             Copy link
           </Button>
+        </div>
+      </Section>
+
+      <Section
+        title="Print sheet"
+        hint="Tickets at their real size on A4 or Letter, with crop marks to cut along. Uses the Side setting above: with both, the pages alternate front and back so double-sided printing (flip on the long edge) lines them up."
+      >
+        <SegmentedField
+          label="Paper"
+          value={sheet.paper}
+          options={[
+            { value: "a4", label: "A4" },
+            { value: "letter", label: "Letter" },
+          ]}
+          onChange={(paper) => setSheet((s) => ({ ...s, paper }))}
+        />
+        <SliderField
+          label="Ticket width"
+          value={sheet.ticketWidthMm}
+          min={40}
+          max={150}
+          format={(v) => `${v} mm`}
+          onChange={(ticketWidthMm) => setSheet((s) => ({ ...s, ticketWidthMm }))}
+        />
+        <SliderField
+          label="Copies"
+          value={sheet.copies}
+          min={1}
+          max={48}
+          onChange={(copies) => setSheet((s) => ({ ...s, copies }))}
+        />
+        <SwitchField
+          label="Crop marks"
+          checked={sheet.cropMarks}
+          onChange={(cropMarks) => setSheet((s) => ({ ...s, cropMarks }))}
+        />
+        <div>
+          <Button
+            variant="tonal"
+            size="xs"
+            disabled={!main || printing}
+            onClick={async () => {
+              setPrinting(true);
+              setStatus(null);
+              try {
+                const { settings: current } = useTicketerStore.getState();
+                const photos = usePhotoStore.getState();
+                const file = await renderPrintSheet(
+                  current,
+                  {
+                    main: photos.main,
+                    stub: photos.stub,
+                    stickers: useStickerStore.getState().items,
+                  },
+                  sheet,
+                );
+                downloadFile(file);
+                setStatus({ ok: true, text: "Print sheet ready." });
+              } catch (error) {
+                setStatus({
+                  ok: false,
+                  text:
+                    error instanceof Error ? error.message : "The print sheet could not be made.",
+                });
+              } finally {
+                setPrinting(false);
+              }
+            }}
+          >
+            {printing ? "Making the sheet…" : "Download print sheet (PDF)"}
+          </Button>
+        </div>
+      </Section>
+
+      <Section
+        title="Project"
+        hint="Save the whole ticket (settings, photos and stickers) as one file to come back to later, or open one you saved."
+      >
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="tonal"
+            size="xs"
+            onClick={async () => {
+              try {
+                const file = await saveProject();
+                downloadFile({ ...file, type: "application/zip" });
+                setStatus({ ok: true, text: `Saved ${file.filename}.` });
+              } catch {
+                setStatus({ ok: false, text: "The project could not be saved." });
+              }
+            }}
+          >
+            Save project
+          </Button>
+          <label
+            className={cn(
+              buttonVariants({ variant: "tonal", size: "xs" }),
+              "cursor-pointer",
+              "has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-secondary",
+            )}
+          >
+            Open project
+            <input
+              type="file"
+              accept=".ticketer,application/zip"
+              className="sr-only"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                const hasWork = main !== null || useStickerStore.getState().items.length > 0;
+                if (
+                  hasWork &&
+                  !window.confirm(
+                    "Opening a project replaces the ticket you are working on. Continue?",
+                  )
+                ) {
+                  return;
+                }
+                try {
+                  await openProject(file);
+                  setStatus({ ok: true, text: "Project opened." });
+                } catch (error) {
+                  setStatus({
+                    ok: false,
+                    text:
+                      error instanceof Error ? error.message : "That project could not be opened.",
+                  });
+                }
+              }}
+            />
+          </label>
         </div>
       </Section>
 
