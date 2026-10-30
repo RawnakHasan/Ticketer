@@ -14,6 +14,7 @@ import {
 } from "@/lib/ticket/export";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { clamp } from "@/lib/ticket/math";
+import { shareUrl } from "@/lib/ticket/share";
 import { PRESETS } from "@/lib/ticket/presets";
 import { cn } from "@/lib/utils";
 import { usePhotoStore } from "@/stores/photoStore";
@@ -184,6 +185,29 @@ export function ExportStep() {
           {preset.w * settings.scale}×{preset.h * settings.scale}px ·{" "}
           {settings.format.toUpperCase()}
         </p>
+      </Section>
+
+      <Section
+        title="Share this style"
+        hint="Copies a link to this ticket's look and text. Photos and stickers are not in it, whoever opens it adds their own."
+      >
+        <div>
+          <Button
+            variant="tonal"
+            size="xs"
+            onClick={async () => {
+              try {
+                const { settings: current } = useTicketerStore.getState();
+                await navigator.clipboard.writeText(await shareUrl(current));
+                setStatus({ ok: true, text: "Link copied." });
+              } catch {
+                setStatus({ ok: false, text: "The link could not be copied." });
+              }
+            }}
+          >
+            Copy link
+          </Button>
+        </div>
       </Section>
 
       <div className="flex flex-col gap-2 p-3">

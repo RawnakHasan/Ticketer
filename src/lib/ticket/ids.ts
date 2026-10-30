@@ -46,3 +46,14 @@ export type SideId = (typeof SIDE_IDS)[number];
 
 export const EXPORT_SIDE_IDS = ["front", "back", "both"] as const;
 export type ExportSideId = (typeof EXPORT_SIDE_IDS)[number];
+
+export const TITLE_FONT_IDS = [
+  "grotesk",
+  "serif",
+  "condensed",
+  "rounded",
+  "clean",
+  "script",
+  "mono",
+] as const;
+export type TitleFontId = (typeof TITLE_FONT_IDS)[number];

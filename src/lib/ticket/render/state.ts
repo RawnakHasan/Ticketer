@@ -100,6 +100,7 @@ export function buildTicketState(
     shadow: settings.shadow,
     backdrop: settings.backdrop,
     mkStock,
+    titleFont: settings.titleFont,
     stickers: photos.stickers ?? [],
     selectedSticker: view.selectedSticker ?? null,
     stickerGuides: view.stickerGuides ?? null,

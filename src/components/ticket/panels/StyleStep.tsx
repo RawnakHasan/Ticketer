@@ -6,7 +6,9 @@ import { Section, SegmentedField, SliderField, SwitchField } from "@/components/
 import { StickerSection } from "@/components/ticket/StickerSection";
 import { TemplateThumb } from "@/components/ticket/TemplateThumb";
 import { contrastRatio, mix } from "@/lib/ticket/color";
+import { TITLE_FONT_IDS } from "@/lib/ticket/ids";
 import { photoChips } from "@/lib/ticket/palette";
+import { TITLE_FONTS } from "@/lib/ticket/titleFonts";
 import {
   BACKDROP_IDS,
   LAYOUT_IDS,
@@ -295,6 +297,30 @@ export function StyleStep() {
           max={40}
           onChange={(r) => updateStubArea({ r })}
         />
+      </Section>
+
+      <Section
+        title="Title font"
+        hint="The big text on the ticket: the event name, and the headings of some designs."
+      >
+        <div role="group" aria-label="Title font" className="flex flex-wrap gap-2">
+          {TITLE_FONT_IDS.map((id) => {
+            const font = TITLE_FONTS[id];
+            return (
+              <ToggleButton
+                key={id}
+                variant="outlined"
+                size="sm"
+                pressed={settings.titleFont === id}
+                onPressedChange={() => update({ titleFont: id })}
+                // Each one is shown in its own font, so the choice is visible before it is made
+                style={{ fontFamily: font.family, fontWeight: font.weight }}
+              >
+                {font.label}
+              </ToggleButton>
+            );
+          })}
+        </div>
       </Section>
 
       <Section title="Paper">

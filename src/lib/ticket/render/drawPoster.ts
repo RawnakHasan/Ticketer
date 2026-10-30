@@ -1,4 +1,5 @@
 import { drawStickers, onSide } from "../sticker";
+import { setTitleFont } from "../titleFonts";
 import type { Preset } from "../presets";
 import { backdropClock, drawAnimatedBackdrop, drawStaticBackdrop } from "./backdrop";
 import { renderBack } from "./back";
@@ -55,6 +56,7 @@ export function drawPoster(
       st: item.stock ? S.mkStock(item.stock) : S.st,
     };
     const render = S.back ? renderBack : TEMPLATES[S.tpl].render;
+    setTitleFont(S.titleFont);
     const { canvas: rendered, warnings: w } = render(ticket, k);
     // Stickers go over everything the template drew, on the side each one is set to
     const side = S.back ? "back" : "front";

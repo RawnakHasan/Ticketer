@@ -3,9 +3,11 @@ import qrcode from "qrcode-generator";
 import { mutedInk, rgb, rgba } from "../color";
 import type { FieldKey } from "../fields";
 import { drawCover } from "../photo";
+import { TITLE_FONT_FACES, titleFont } from "../titleFonts";
 import type { TicketState } from "./types";
 
-export const FB = (s: number) => `800 ${s}px "Bricolage Grotesque"`;
+// The ticket's big text. Its font is the one picked as the title font.
+export const FB = (s: number) => titleFont(s);
 export const FM =
   (weight = 400) =>
   (s: number) =>
@@ -14,6 +16,7 @@ export const FC = (s: number) => `600 ${s}px Caveat`;
 
 // Fonts the canvas needs before it draws
 export const TICKET_FONTS = [
+  ...TITLE_FONT_FACES,
   '800 40px "Bricolage Grotesque"',
   '500 16px "DM Mono"',
   "600 28px Caveat",

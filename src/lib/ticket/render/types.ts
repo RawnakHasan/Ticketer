@@ -1,6 +1,6 @@
 import type { RGB, Stock } from "../color";
 import type { FieldKey } from "../fields";
-import type { BackdropId, LayoutId, StockId, TemplateId } from "../ids";
+import type { BackdropId, LayoutId, StockId, TemplateId, TitleFontId } from "../ids";
 import type { MainShape, StubArea } from "../settings";
 import type { Sticker, StickerGuides } from "../sticker";
 import type { Photo } from "../types";
@@ -37,6 +37,8 @@ export type TicketState = {
   // Builds the colours for a paper stock with this ticket's accent and hand-picked colours.
   // The variations layout uses it to show the same ticket on other paper.
   mkStock: (id: StockId) => Stock;
+  // Font of the big text, set before each ticket is drawn
+  titleFont: TitleFontId;
   // Drawn on top of the front of every ticket
   stickers: readonly Sticker[];
   // Gets a dashed outline in the preview. Always null for exports.

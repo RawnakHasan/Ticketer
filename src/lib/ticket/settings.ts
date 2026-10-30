@@ -1,7 +1,15 @@
 import { z } from "zod";
 
 import { makeDefaultFields, makeDefaultShow } from "./fields";
-import { BACKDROP_IDS, EXPORT_SIDE_IDS, FX_IDS, LAYOUT_IDS, STOCK_IDS, TEMPLATE_IDS } from "./ids";
+import {
+  BACKDROP_IDS,
+  EXPORT_SIDE_IDS,
+  FX_IDS,
+  LAYOUT_IDS,
+  STOCK_IDS,
+  TEMPLATE_IDS,
+  TITLE_FONT_IDS,
+} from "./ids";
 
 const rgbSchema = z.tuple([z.number(), z.number(), z.number()]);
 
@@ -47,6 +55,7 @@ export const DEFAULT_ADJUST: Adjust = {
 export const settingsSchema = z.object({
   tpl: z.enum(TEMPLATE_IDS).default("admit"),
   stock: z.enum(STOCK_IDS).default("light"),
+  titleFont: z.enum(TITLE_FONT_IDS).default("grotesk"),
   grain: z.boolean().default(true),
   notched: z.boolean().default(false),
   backdrop: z.enum(BACKDROP_IDS).default("grad"),

@@ -4,6 +4,7 @@ import { useFontsReady } from "@/hooks/useFontsReady";
 import { buildTicketState } from "@/lib/ticket/render/state";
 import { TEMPLATES } from "@/lib/ticket/render/templates";
 import type { TemplateId } from "@/lib/ticket/ids";
+import { setTitleFont } from "@/lib/ticket/titleFonts";
 import { usePhotoStore } from "@/stores/photoStore";
 import { useTicketerStore } from "@/stores/ticketerStore";
 
@@ -22,6 +23,7 @@ export function TemplateThumb({ tpl }: { tpl: TemplateId }) {
     // Wait for a pause in changes so dragging a slider doesn't redraw every thumbnail
     const timer = setTimeout(() => {
       const state = buildTicketState({ ...settings, tpl }, { main, stub });
+      setTitleFont(state.titleFont);
       const { canvas: rendered } = TEMPLATES[tpl].render(state, 0.22);
       canvas.width = rendered.width;
       canvas.height = rendered.height;

@@ -10,6 +10,7 @@ import type { Preset } from "@/lib/ticket/presets";
 import { layoutGroup } from "@/lib/ticket/render/layout";
 import { TEMPLATES } from "@/lib/ticket/render/templates";
 import { hitHandle, hitSticker, onSide } from "@/lib/ticket/sticker";
+import { VISION_FILTERS, VISION_IDS, VISION_LABELS, visionFilter } from "@/lib/ticket/vision";
 import type { TicketState } from "@/lib/ticket/render/types";
 import { useTicketCanvas } from "@/hooks/useTicketCanvas";
 import { cn } from "@/lib/utils";
@@ -98,6 +99,8 @@ export function TicketPreview() {
   const side = useViewStore((s) => s.side);
   // Only the stickers on the side being shown can be grabbed
   const onThisSide = stickers.filter((s) => onSide(s, side));
+  const vision = useViewStore((s) => s.vision);
+  const setVision = useViewStore((s) => s.setVision);
   const flip = useViewStore((s) => s.flip);
   const printKey = useViewStore((s) => s.printKey);
   const dragStamp = useViewStore((s) => s.dragStamp);
@@ -235,7 +238,19 @@ export function TicketPreview() {
             onAnimationEnd={endFlip}
           >
             <div className="relative max-w-full overflow-hidden rounded-xl bg-surface-container-high p-2 lg:p-4">
-              <div key={printKey} className="tk-print relative">
+              {/* The colour filters the "Preview as" menu applies. Nothing is drawn by this. */}
+              <svg aria-hidden="true" width="0" height="0" className="absolute">
+                {VISION_FILTERS.map(({ id, values }) => (
+                  <filter key={id} id={`tk-vision-${id}`} colorInterpolationFilters="linearRGB">
+                    <feColorMatrix type="matrix" values={values} />
+                  </filter>
+                ))}
+              </svg>
+              <div
+                key={printKey}
+                className="tk-print relative"
+                style={{ filter: visionFilter(vision) }}
+              >
                 {animated && (
                   <canvas
                     ref={backdropRef}
@@ -483,6 +498,21 @@ export function TicketPreview() {
         >
           {side === "back" ? "Show front" : "Show back"}
         </ToggleButton>
+        <label className="flex items-center gap-2 text-sm text-on-surface-variant">
+          Preview as
+          <select
+            value={vision}
+            onChange={(event) => setVision(event.target.value as typeof vision)}
+            title="Only changes this preview. Downloads keep the real colours."
+            className="h-8 rounded-full border border-outline bg-surface px-3 text-sm text-on-surface outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+          >
+            {VISION_IDS.map((id) => (
+              <option key={id} value={id}>
+                {VISION_LABELS[id]}
+              </option>
+            ))}
+          </select>
+        </label>
         {canTiltWithPhone && (
           <ToggleButton variant="outlined" size="xs" pressed={gyro} onPressedChange={toggleGyro}>
             Tilt with phone

@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import { prefersReducedMotion } from "@/lib/motion-preferences";
 import type { SideId } from "@/lib/ticket/ids";
+import type { VisionId } from "@/lib/ticket/vision";
 
 // How the preview is being looked at right now. None of it is saved or exported.
 type ViewState = {
@@ -15,6 +16,9 @@ type ViewState = {
   // Changing it replays the print-in animation
   printKey: number;
   message: string;
+  // Colour blindness the preview is shown as. Preview only.
+  vision: VisionId;
+  setVision: (vision: VisionId) => void;
   showBack: () => void;
   toggleSide: () => void;
   endFlip: () => void;
@@ -35,6 +39,8 @@ export const useViewStore = create<ViewState>()((set, get) => ({
   gyro: false,
   printKey: 0,
   message: "",
+  vision: "none",
+  setVision: (vision) => set({ vision }),
   showBack: () => set({ side: "back" }),
   toggleSide: () => {
     const next = get().side === "back" ? "front" : "back";
