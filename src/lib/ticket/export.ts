@@ -6,7 +6,7 @@ import type { Settings } from "./settings";
 
 export type PosterFile = { blob: Blob; filename: string; type: string };
 
-type ImageType = "image/png" | "image/jpeg";
+export type ImageType = "image/png" | "image/jpeg";
 
 const slug = (text: string) =>
   text
@@ -14,10 +14,10 @@ const slug = (text: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "") || "ticket";
 
-const extensionOf = (type: ImageType) => (type === "image/png" ? "png" : "jpg");
+export const extensionOf = (type: ImageType) => (type === "image/png" ? "png" : "jpg");
 
 // Draws one side of the ticket at export size and encodes it
-async function renderImage(
+export async function renderImage(
   settings: Settings,
   photos: Photos,
   type: ImageType,

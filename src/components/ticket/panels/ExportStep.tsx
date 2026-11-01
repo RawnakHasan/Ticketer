@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { buttonVariants } from "@/components/ui/Button/variant";
@@ -15,6 +15,8 @@ import {
 } from "@/lib/ticket/export";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { clamp } from "@/lib/ticket/math";
+import { MAX_ROWS, mapColumns, parseCsv, renderBatch } from "@/lib/ticket/batch";
+import { recordFlip } from "@/lib/ticket/flipVideo";
 import { renderPrintSheet, type SheetOptions } from "@/lib/ticket/printSheet";
 import { openProject, saveProject } from "@/lib/ticket/project";
 import { shareUrl } from "@/lib/ticket/share";
@@ -41,6 +43,15 @@ export function ExportStep() {
     cropMarks: true,
   });
   const [printing, setPrinting] = useState(false);
+  // The flip video records as it plays, so it shows how far along it is
+  const [flipProgress, setFlipProgress] = useState<number | null>(null);
+  // A list of tickets to make in one go
+  const [list, setList] = useState("");
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const stopBatch = useRef<AbortController | null>(null);
+  const rows = useMemo(() => parseCsv(list), [list]);
+  const columns = useMemo(() => (rows[0] ? mapColumns(rows[0]) : null), [rows]);
+  const ticketCount = Math.max(0, rows.length - 1);
 
   const { preset } = composeTicket(settings, { main, stub });
   const canCopy = typeof ClipboardItem !== "undefined";
@@ -219,6 +230,170 @@ export function ExportStep() {
             Copy link
           </Button>
         </div>
+      </Section>
+
+      <Section
+        title="Flip video"
+        hint="A short loop of the ticket turning over to show its back, over the backdrop. It is recorded as it plays, so it takes about 3 seconds. Keep this tab open until it is done."
+      >
+        <div>
+          <Button
+            variant="tonal"
+            size="xs"
+            disabled={!main || flipProgress !== null || typeof MediaRecorder === "undefined"}
+            onClick={async () => {
+              setFlipProgress(0);
+              setStatus(null);
+              try {
+                const { settings: current } = useTicketerStore.getState();
+                const photos = usePhotoStore.getState();
+                const file = await recordFlip(
+                  current,
+                  {
+                    main: photos.main,
+                    stub: photos.stub,
+                    stickers: useStickerStore.getState().items,
+                  },
+                  setFlipProgress,
+                );
+                downloadFile(file);
+                setStatus({ ok: true, text: "Flip video ready." });
+              } catch (error) {
+                setStatus({
+                  ok: false,
+                  text: error instanceof Error ? error.message : "The video could not be recorded.",
+                });
+              } finally {
+                setFlipProgress(null);
+              }
+            }}
+          >
+            {flipProgress !== null
+              ? `Recording… ${Math.round(flipProgress * 100)}%`
+              : "Record flip video"}
+          </Button>
+        </div>
+        {typeof MediaRecorder === "undefined" && (
+          <p className="text-sm text-on-surface-variant">This browser cannot record video.</p>
+        )}
+      </Section>
+
+      <Section
+        title="Tickets from a list"
+        hint={`Make many tickets at once, one per row. The first row names the columns: name, date, time, place, title, price, tier, serial and more (seat, gate and zone fill a boarding pass). Anything a row leaves empty keeps what is on the ticket now, and each ticket gets its own serial number unless the list has one. Up to ${MAX_ROWS} at a time.`}
+      >
+        <textarea
+          value={list}
+          onChange={(event) => setList(event.target.value)}
+          rows={5}
+          spellCheck={false}
+          aria-label="List of tickets"
+          placeholder={"name,date,place\nAna Rivera,3 MAR,Hall A\nBo Chen,4 MAR,Hall B"}
+          className="w-full resize-y rounded-xl border border-outline-variant bg-surface-container-low p-3 font-mono text-sm text-on-surface outline-none placeholder:text-on-surface-variant/60 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <label
+            className={cn(
+              buttonVariants({ variant: "tonal", size: "xs" }),
+              "cursor-pointer",
+              "has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-secondary",
+            )}
+          >
+            Open a .csv file
+            <input
+              type="file"
+              accept=".csv,text/csv,text/plain"
+              className="sr-only"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) setList(await file.text());
+              }}
+            />
+          </label>
+          <Button
+            variant="text"
+            size="xs"
+            onClick={() =>
+              setList(
+                "name,date,place\nAna Rivera,3 MAR,Hall A\nBo Chen,4 MAR,Hall B\nCleo Park,5 MAR,Hall C",
+              )
+            }
+          >
+            Insert an example
+          </Button>
+        </div>
+        {columns && (
+          <p className="text-sm text-on-surface-variant">
+            {columns.used.length > 0
+              ? `Fills: ${columns.used.map((c) => c.heading).join(", ")}.`
+              : "No heading matches a ticket field yet."}
+            {columns.ignored.length > 0 && ` Not used: ${columns.ignored.join(", ")}.`}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="tonal"
+            size="xs"
+            disabled={
+              !main ||
+              batchProgress !== null ||
+              ticketCount < 1 ||
+              ticketCount > MAX_ROWS ||
+              !columns?.used.length
+            }
+            onClick={async () => {
+              const stop = new AbortController();
+              stopBatch.current = stop;
+              setBatchProgress({ done: 0, total: ticketCount });
+              setStatus(null);
+              try {
+                const { settings: current } = useTicketerStore.getState();
+                const photos = usePhotoStore.getState();
+                const file = await renderBatch(
+                  current,
+                  {
+                    main: photos.main,
+                    stub: photos.stub,
+                    stickers: useStickerStore.getState().items,
+                  },
+                  rows,
+                  (done, total) => setBatchProgress({ done, total }),
+                  stop.signal,
+                );
+                downloadFile(file);
+                setStatus({
+                  ok: true,
+                  text: `Made ${ticketCount} ticket${ticketCount === 1 ? "" : "s"}.`,
+                });
+              } catch (error) {
+                setStatus({
+                  ok: false,
+                  text: error instanceof Error ? error.message : "The tickets could not be made.",
+                });
+              } finally {
+                setBatchProgress(null);
+                stopBatch.current = null;
+              }
+            }}
+          >
+            {batchProgress
+              ? `Making ${batchProgress.done} of ${batchProgress.total}…`
+              : ticketCount > 0
+                ? `Make ${ticketCount} ticket${ticketCount === 1 ? "" : "s"} (.zip)`
+                : "Make tickets (.zip)"}
+          </Button>
+          {batchProgress && (
+            <Button variant="text" size="xs" onClick={() => stopBatch.current?.abort()}>
+              Stop
+            </Button>
+          )}
+        </div>
+        {ticketCount > MAX_ROWS && (
+          <p role="alert" className="text-sm text-error">
+            That is {ticketCount} rows. Up to {MAX_ROWS} at a time.
+          </p>
+        )}
       </Section>
 
       <Section
